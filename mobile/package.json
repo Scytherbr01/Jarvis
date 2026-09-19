@@ -1,0 +1,23 @@
+{
+  "name": "jarvis-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jarvis daily brief app packaged as a real Android app via Capacitor — buildable entirely from the command line, no Mac or Xcode required.",
+  "scripts": {
+    "android:add": "cap add android",
+    "sync": "cap sync android",
+    "open:android": "cap open android",
+    "build:apk": "cap sync android && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/app": "^6.0.2",
+    "@capacitor/browser": "^6.0.3",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/local-notifications": "^6.1.1",
+    "@capacitor/preferences": "^6.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

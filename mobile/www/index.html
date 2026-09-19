@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>Jarvis</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <div class="hud-grid"></div>
+
+    <!-- ============ DAILY BRIEF ============ -->
+    <section id="screen-brief" class="screen active">
+      <div class="topbar">
+        <div class="brand">J.A.R.V.I.S.</div>
+        <button class="icon-btn" id="btn-open-settings" aria-label="Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.6V21a2 2 0 11-4 0v-.2a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.6-1H3a2 2 0 110-4h.2a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.6V3a2 2 0 114 0v.2a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.6 1H21a2 2 0 110 4h-.2a1.7 1.7 0 00-1.6 1z"/></svg>
+        </button>
+      </div>
+      <div class="subheading" id="brief-greeting">GOOD MORNING</div>
+
+      <div class="brief-body" id="brief-body">
+        <div class="status-view" id="brief-loading">
+          <div class="reactor-wrap active" style="transform:scale(0.65)"></div>
+          <div class="spinner-label">Building your brief…</div>
+        </div>
+      </div>
+
+      <div class="primary-bar">
+        <button class="btn-primary" id="btn-ask-jarvis">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 003-3V6a3 3 0 00-6 0v6a3 3 0 003 3z"/></svg>
+          Ask Jarvis
+        </button>
+      </div>
+    </section>
+
+    <!-- ============ SETTINGS ============ -->
+    <section id="screen-settings" class="screen">
+      <div class="topbar">
+        <button class="link-btn" id="btn-close-settings">Back</button>
+        <div class="brand">SETTINGS</div>
+        <div style="width:38px"></div>
+      </div>
+      <div class="settings-body">
+        <div class="field-group-title">JARVIS BACKEND</div>
+        <div class="field-group">
+          <div class="field-row"><label>Server</label><input type="text" id="input-backend-url" placeholder="https://your-backend.example.com" autocapitalize="off" /></div>
+          <div class="field-row"><label>API key</label><input type="password" id="input-api-key" placeholder="key" /></div>
+        </div>
+
+        <div class="field-group-title">DAILY BRIEF TIME</div>
+        <div class="field-group">
+          <div class="field-row"><label>Notify me at</label><input type="time" id="input-brief-time" value="07:00" /></div>
+        </div>
+        <div class="hint" id="notif-status"></div>
+
+        <div class="field-group-title">CONNECTIONS</div>
+        <div class="field-group" id="connections-list"></div>
+
+        <div class="field-group-title">CALL ALERTS</div>
+        <div class="field-group">
+          <div class="field-row">
+            <label>Call me for urgent updates</label>
+            <div class="toggle disabled" id="toggle-call-alerts"></div>
+          </div>
+        </div>
+        <div class="hint">Uses Twilio, a paid calling service — disabled until you add Twilio credentials to the backend's <code>.env</code> (see backend/README.md). Flip this on once they're set.</div>
+      </div>
+    </section>
+
+    <!-- ============ ASK JARVIS ============ -->
+    <section id="screen-ask" class="screen">
+      <div class="topbar">
+        <button class="link-btn" id="btn-close-ask">Close</button>
+        <div class="brand">ASK JARVIS</div>
+        <div style="width:38px"></div>
+      </div>
+
+      <div class="ask-center" id="ask-content">
+        <div class="ask-hint">Tap the reactor and try:</div>
+        <div class="ask-examples">"EMAIL SAM ABOUT FRIDAY"<br>"TEXT SAM RUNNING LATE"<br>"CALL SAM"<br>"OPEN INSTAGRAM"</div>
+      </div>
+
+      <div class="mic-dock">
+        <button class="reactor-btn" id="btn-ask-reactor" aria-label="Start listening"></button>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/reactor.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/speech.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
