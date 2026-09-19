@@ -9,6 +9,9 @@ struct SettingsView: View {
     @State private var isGmailConnected = KeychainStore.get("gmailTokens") != nil
     @State private var webAuthSession: ASWebAuthenticationSession?
     @State private var statusMessage: String?
+    @State private var twilioConfigured = false
+    @State private var twilioEnabled = false
+    @State private var isSendingTestCall = false
 
     var body: some View {
         Form {
@@ -51,17 +54,78 @@ struct SettingsView: View {
                 Text("Connections").foregroundStyle(JarvisTheme.accent)
             }
             .listRowBackground(JarvisTheme.surface)
+
+            Section {
+                Toggle(isOn: Binding(get: { twilioEnabled }, set: { toggleCallAlerts($0) })) {
+                    Text("Call me for urgent updates").foregroundStyle(JarvisTheme.textPrimary)
+                }
+                .tint(JarvisTheme.accent)
+                .disabled(!twilioConfigured)
+
+                if twilioConfigured {
+                    Button {
+                        Task { await sendTestCall() }
+                    } label: {
+                        Text(isSendingTestCall ? "Calling…" : "Send a test call")
+                    }
+                    .disabled(isSendingTestCall)
+                    .foregroundStyle(JarvisTheme.accent)
+                }
+            } header: {
+                Text("Call Alerts").foregroundStyle(JarvisTheme.accent)
+            } footer: {
+                Text(
+                    twilioConfigured
+                        ? "Twilio is configured on the backend. Toggle on to let the alert-check cron call you for market moves and urgent email — see backend/README.md to tune thresholds."
+                        : "Uses Twilio, a paid calling service — disabled until you add Twilio credentials to the backend's .env (see backend/README.md). Flip this on once they're set."
+                )
+                .foregroundStyle(JarvisTheme.textTertiary)
+            }
+            .listRowBackground(JarvisTheme.surface)
         }
         .scrollContentBackground(.hidden)
         .background(JarvisTheme.background.ignoresSafeArea())
         .navigationTitle("Settings")
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .task { await loadConnections() }
+        .task {
+            await loadConnections()
+            await refreshTwilioStatus()
+        }
     }
 
     private func loadConnections() async {
         guard !backendURL.isEmpty, !apiKey.isEmpty else { return }
         connections = (try? await JarvisAPIClient.shared.fetchConnections()) ?? []
+    }
+
+    private func refreshTwilioStatus() async {
+        guard !backendURL.isEmpty, !apiKey.isEmpty else { return }
+        if let status = try? await JarvisAPIClient.shared.twilioStatus() {
+            twilioConfigured = status.configured
+            twilioEnabled = status.enabled
+        }
+    }
+
+    private func toggleCallAlerts(_ newValue: Bool) {
+        Task {
+            do {
+                let status = try await JarvisAPIClient.shared.setTwilioEnabled(newValue)
+                twilioConfigured = status.configured
+                twilioEnabled = status.enabled
+            } catch {
+                statusMessage = "Couldn't update call alerts: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    private func sendTestCall() async {
+        isSendingTestCall = true
+        defer { isSendingTestCall = false }
+        do {
+            try await JarvisAPIClient.shared.callAlert(message: "This is a test call from Jarvis. Call alerts are working.")
+        } catch {
+            statusMessage = "Test call failed: \(error.localizedDescription)"
+        }
     }
 
     private func connectGmail() {

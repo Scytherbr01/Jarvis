@@ -39,6 +39,7 @@ struct JarvisOrb: View {
                 .frame(width: size * 0.84, height: size * 0.84)
                 .rotationEffect(.degrees(dialRotation))
                 .shadow(color: JarvisTheme.accent.opacity(isActive ? 0.9 : 0.5), radius: isActive ? 18 : 8)
+                .animation(.easeInOut(duration: 0.5), value: isActive)
 
             // Secondary dashed ring, counter-rotating.
             Circle()

@@ -5,6 +5,8 @@ import { config } from "./config.js";
 import { requireApiKey } from "./middleware/requireApiKey.js";
 import { briefRoutes } from "./routes/briefRoutes.js";
 import { runDailyBrief } from "./agent/dailyBriefAgent.js";
+import { checkAndCallIfUrgent } from "./agent/alertChecker.js";
+import { runtimeState } from "./state/runtimeState.js";
 
 const app = express();
 app.use(cors());
@@ -29,6 +31,25 @@ if (config.dailyBriefCron) {
       console.log(`[cron] Generated daily brief at ${brief.generatedAt}`);
     } catch (err) {
       console.error("[cron] Failed to generate daily brief", err);
+    }
+  });
+}
+
+// Only runs its checks when Twilio is configured AND the app's "Call me
+// for urgent updates" toggle is on (runtimeState.callAlertsEnabled, set
+// via POST /api/twilio/toggle). Market-move checks need no stored
+// credentials; the urgent-email check additionally needs
+// GMAIL_SERVER_REFRESH_TOKEN.
+if (config.alerts.checkCron) {
+  cron.schedule(config.alerts.checkCron, async () => {
+    if (!config.twilioConfigured || !runtimeState.callAlertsEnabled) return;
+    try {
+      const gmailTokens = config.google.serverRefreshToken
+        ? { accessToken: "", refreshToken: config.google.serverRefreshToken }
+        : undefined;
+      await checkAndCallIfUrgent({ gmailTokens });
+    } catch (err) {
+      console.error("[cron] Alert check failed", err);
     }
   });
 }

@@ -53,5 +53,8 @@ const JarvisAPI = (() => {
       request("/api/compose/text", { method: "POST", body: { recipientName, topic } }),
     sendEmail: (gmailTokens, to, subject, body) =>
       request("/api/gmail/send", { method: "POST", body: { gmailTokens, to, subject, body } }),
+    twilioStatus: () => request("/api/twilio/status"),
+    setTwilioEnabled: (enabled) => request("/api/twilio/toggle", { method: "POST", body: { enabled } }),
+    callAlert: (message) => request("/api/call-alert", { method: "POST", body: { message } }),
   };
 })();

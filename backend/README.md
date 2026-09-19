@@ -26,6 +26,9 @@ npm run dev       # http://localhost:8787
 | `DEFAULT_WATCHLIST` | Stocks | comma-separated tickers used when the app doesn't send its own |
 | `DAILY_BRIEF_CRON` | scheduled generation | cron expression, default 7am daily |
 | `APNS_*` | push notifications | only needed if you wire up server-push (see below); local notifications from the app work without this |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` / `CALL_TO_NUMBER` | Call alerts | all four required together; see **Call alerts** below |
+| `ALERT_CHECK_CRON` / `CALL_MARKET_MOVE_THRESHOLD_PERCENT` / `CALL_ON_URGENT_EMAIL` / `CALL_COOLDOWN_MINUTES` | Call alerts | tune what counts as urgent and how often to check |
+| `GMAIL_SERVER_REFRESH_TOKEN` | Call alerts (email) | optional — lets the alert cron check Gmail without the app open; see **Call alerts** below |
 
 ## Endpoints
 
@@ -38,6 +41,34 @@ All under `/api`, all require the `x-jarvis-key` header.
 - `POST /api/compose/email` — body `{ recipientName?, recipientEmail?, topic, instructions? }`, returns `{ subject, body }` drafted by Claude. Draft only, never sends.
 - `POST /api/compose/text` — body `{ recipientName?, topic, instructions? }`, returns `{ body }` drafted by Claude, SMS-style. Draft only.
 - `POST /api/gmail/send` — body `{ gmailTokens, to, subject, body }`, actually sends via Gmail. Only call this after the user has approved a draft.
+- `GET /api/twilio/status` — `{ configured: boolean }`, whether call-alerts are set up. Drives the on/off state of the Settings toggle in both apps.
+- `POST /api/call-alert` — body `{ message }`, places a real phone call right now reading `message` aloud. Used by the apps' "Test call" button and internally by the alert-check cron. Returns 409 if Twilio isn't configured.
+
+## Call alerts (Twilio)
+
+Places an actual phone call — not a push notification — when something
+crosses a threshold you set. **This costs real money**: Twilio charges
+for the phone number (~$1/mo) and per-minute for calls (~$0.013/min in
+the US). Nothing here runs until all of `TWILIO_ACCOUNT_SID`,
+`TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, and `CALL_TO_NUMBER` are set —
+get an account and number at [twilio.com/console](https://www.twilio.com/console).
+
+Two triggers, checked on `ALERT_CHECK_CRON` (default every 30 minutes):
+- A watchlist ticker moves at least `CALL_MARKET_MOVE_THRESHOLD_PERCENT`
+  (default 3%) in either direction.
+- A new Gmail message arrives that Gmail itself flags important (needs
+  `GMAIL_SERVER_REFRESH_TOKEN` — see below; skipped without it).
+
+Each kind of alert calls at most once per `CALL_COOLDOWN_MINUTES` (default
+120) — it won't call again for the same still-true condition until that
+window passes. Cooldown state is in-memory and resets on server restart.
+
+**Wiring up the unattended email check** (optional — market alerts work
+without this):
+1. Set `GMAIL_LOG_REFRESH_TOKEN=true` and restart the server.
+2. Connect Gmail once from either app's Settings screen.
+3. Copy the refresh token the server logs to `GMAIL_SERVER_REFRESH_TOKEN`.
+4. Set `GMAIL_LOG_REFRESH_TOKEN=false` (or remove it) and restart.
 
 ## Run the daily brief routine without the app
 

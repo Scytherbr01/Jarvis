@@ -1,8 +1,11 @@
 import { Router } from "express";
+import { config } from "../config.js";
 import { runDailyBrief } from "../agent/dailyBriefAgent.js";
 import { buildAuthUrl, exchangeCodeForTokens, sendEmail } from "../services/gmailService.js";
 import { composeEmail, composeText } from "../services/composeService.js";
+import { placeAlertCall } from "../services/twilioService.js";
 import { CONNECTIONS } from "../services/connections.js";
+import { runtimeState } from "../state/runtimeState.js";
 
 export const briefRoutes = Router();
 
@@ -40,6 +43,12 @@ briefRoutes.post("/oauth/gmail/exchange", async (req, res) => {
   }
   try {
     const tokens = await exchangeCodeForTokens(code);
+    if (process.env.GMAIL_LOG_REFRESH_TOKEN === "true" && tokens.refreshToken) {
+      // One-time convenience for wiring up the unattended alert-check
+      // cron — see GMAIL_SERVER_REFRESH_TOKEN in config.ts. Never log
+      // this by default.
+      console.log(`[gmail] refresh token (copy into GMAIL_SERVER_REFRESH_TOKEN): ${tokens.refreshToken}`);
+    }
     res.json(tokens);
   } catch (err) {
     console.error("Gmail token exchange failed", err);
@@ -105,5 +114,55 @@ briefRoutes.post("/gmail/send", async (req, res) => {
   } catch (err) {
     console.error("Gmail send failed", err);
     res.status(500).json({ error: err instanceof Error ? err.message : "Gmail send failed." });
+  }
+});
+
+/**
+ * Whether Twilio call-alerts are configured on this backend, and whether
+ * they're currently switched on — drives the "Call me for urgent
+ * updates" toggle in Settings.
+ */
+briefRoutes.get("/twilio/status", (_req, res) => {
+  res.json({ configured: config.twilioConfigured, enabled: runtimeState.callAlertsEnabled });
+});
+
+/**
+ * Body: { enabled }
+ * Actually flips whether the alert-check cron is allowed to place calls
+ * — this is what the app's toggle controls, not just its own local state.
+ */
+briefRoutes.post("/twilio/toggle", (req, res) => {
+  const { enabled } = req.body ?? {};
+  if (typeof enabled !== "boolean") {
+    res.status(400).json({ error: "Missing boolean `enabled` in request body." });
+    return;
+  }
+  runtimeState.callAlertsEnabled = enabled;
+  res.json({ configured: config.twilioConfigured, enabled: runtimeState.callAlertsEnabled });
+});
+
+/**
+ * Body: { message }
+ * Places a real, immediate phone call reading `message` aloud. Used by
+ * the app's "Test call" button, and by the scheduled alert checker
+ * internally. Costs real money per Twilio's pricing — only reachable
+ * when TWILIO_* env vars are set.
+ */
+briefRoutes.post("/call-alert", async (req, res) => {
+  const { message } = req.body ?? {};
+  if (!message) {
+    res.status(400).json({ error: "Missing `message` in request body." });
+    return;
+  }
+  if (!config.twilioConfigured) {
+    res.status(409).json({ error: "Twilio is not configured on this backend yet." });
+    return;
+  }
+  try {
+    const result = await placeAlertCall(message);
+    res.json(result);
+  } catch (err) {
+    console.error("Call alert failed", err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "Call alert failed." });
   }
 });

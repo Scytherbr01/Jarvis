@@ -102,7 +102,49 @@ unchanged.
 
 ## Twilio call-alerts
 
-The Settings screen has a "Call me for urgent updates" toggle — it's
-visibly there but disabled, with a note explaining it needs Twilio
-credentials on the backend first. That backend piece isn't wired up yet;
-see the root `README.md` for status.
+The Settings screen has a "Call me for urgent updates" toggle. It's
+disabled and explains why until the backend has real Twilio credentials
+(see `backend/README.md`); once it does, the toggle actually enables/
+disables the backend's alert-check cron (not just a local UI state — see
+`POST /api/twilio/toggle`), and a "Test call" button places one
+immediately so you can confirm it works before relying on it.
+
+## Offline behavior
+
+The most recent successful brief is cached on-device. If the backend is
+unreachable next time you open the app, you still see that cached brief
+with a banner noting how old it is and a **Retry** button, instead of a
+bare error screen. The refresh icon (top-left of the Daily Brief screen)
+re-fetches on demand at any time.
+
+## Motion design
+
+The reactor's rotation, pulse, and glow are driven by a small physics
+loop in `js/reactor.js` rather than CSS keyframes — easing angular
+velocity toward a target every frame so speeding up/slowing down (e.g.
+when TTS starts or stops) reads as acceleration, not a snap-cut. Screen
+and Ask-Jarvis state transitions cross-fade instead of cutting instantly.
+Where `@capacitor/haptics` is available, primary actions (opening Ask
+Jarvis, sending an email, confirming a call) get a light/medium haptic
+tap.
+
+## Recommended next upgrades
+
+Not built yet, in roughly the order I'd prioritize them:
+
+1. **Push notifications instead of local-only.** Local notifications only
+   fire while the app has scheduled them on-device; a real push (Firebase
+   Cloud Messaging) would let the backend notify you the moment something
+   happens, not just at a fixed daily time, and would let a missed call
+   alert also leave a notification with what it was about.
+2. **Contacts integration** (`@capacitor-community/contacts`) — closes the
+   gap noted above so "text Sam" / "call Sam" resolve automatically
+   instead of asking for a number each time.
+3. **Conversation memory in Ask Jarvis** — follow-ups like "also cc Sarah"
+   after a draft, instead of every command starting from zero context.
+4. **"What changed" diffing on the brief** — highlight what's new since
+   the last time you looked, rather than restating everything.
+5. **A real market-analysis upgrade** — the current signal (price vs.
+   50-day average) is intentionally simple; a licensed data/signal
+   provider would be a meaningfully more useful upgrade than more
+   engineering on the current heuristic.

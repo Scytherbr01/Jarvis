@@ -49,6 +49,23 @@ html, body {
   background: radial-gradient(ellipse at 50% 38%, rgba(38, 207, 255, 0.08), transparent 60%);
 }
 
+/* A faint horizontal scan band drifting down the screen — subtle enough
+   to read as ambient HUD texture, not a distracting effect. */
+.hud-grid::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 140px;
+  background: linear-gradient(180deg, transparent, rgba(38, 207, 255, 0.05), transparent);
+  animation: scanDrift 7s linear infinite;
+}
+
+@keyframes scanDrift {
+  from { top: -140px; }
+  to { top: 100%; }
+}
+
 /* ---------- screen transitions ---------- */
 
 .screen {
@@ -125,46 +142,11 @@ html, body {
 
 .reactor-wrap svg { display: block; overflow: visible; }
 
-.reactor-ticks {
-  transform-origin: center;
-  transform-box: fill-box;
-  animation: spin 24s linear infinite;
-  transition: animation-duration 0.5s var(--ease);
-}
-
-.reactor-dial {
-  transform-origin: center;
-  transform-box: fill-box;
-  animation: spin 6s linear infinite;
-  transition: animation-duration 0.4s var(--ease), filter 0.4s var(--ease);
-  filter: drop-shadow(0 0 6px rgba(38, 207, 255, 0.55));
-}
-
-.reactor-dash {
-  transform-origin: center;
-  transform-box: fill-box;
-  animation: spinReverse 10s linear infinite;
-  transition: animation-duration 0.4s var(--ease);
-}
-
-.reactor-core {
-  transform-origin: center;
-  transform-box: fill-box;
-  animation: pulse 2.2s ease-in-out infinite;
-  transition: animation-duration 0.35s var(--ease);
-}
-
-.reactor-wrap.active .reactor-ticks { animation-duration: 7s; }
-.reactor-wrap.active .reactor-dial { animation-duration: 2.4s; filter: drop-shadow(0 0 16px rgba(38, 207, 255, 0.9)); }
-.reactor-wrap.active .reactor-dash { animation-duration: 3.6s; }
-.reactor-wrap.active .reactor-core { animation-duration: 0.55s; }
-
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes spinReverse { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-@keyframes pulse {
-  0%, 100% { transform: scale(0.92); opacity: 0.92; }
-  50% { transform: scale(1.08); opacity: 1; }
-}
+/* Rotation, pulse, and glow are driven per-frame by ReactorEngine
+   (js/reactor.js) rather than CSS keyframes — swapping animation-
+   duration on a running CSS animation snaps to the new speed instantly,
+   where easing angular velocity toward a target every frame reads as
+   real acceleration. See reactor.js for the physics. */
 
 .reactor-label {
   font-size: 9px;
@@ -206,6 +188,31 @@ html, body {
   padding: 0 4px;
 }
 
+.stale-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: rgba(255, 176, 32, 0.1);
+  border: 1px solid rgba(255, 176, 32, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 0 4px 12px;
+  font-size: 11px;
+  color: #ffc978;
+  animation: panelIn 0.4s var(--ease) both;
+}
+
+.stale-banner button {
+  background: none;
+  border: 1px solid rgba(255, 176, 32, 0.4);
+  border-radius: 6px;
+  color: #ffc978;
+  font-size: 11px;
+  padding: 4px 10px;
+  flex-shrink: 0;
+}
+
 .brief-col {
   flex: 1;
   display: flex;
@@ -225,6 +232,13 @@ html, body {
   backdrop-filter: blur(2px);
   animation: panelIn 0.5s var(--ease) both;
 }
+
+/* A light cascade rather than every panel popping in at once — left
+   column leads, right column follows, second row in each trails first. */
+.brief-col:nth-of-type(1) .panel:nth-of-type(1) { animation-delay: 0.02s; }
+.brief-col:nth-of-type(1) .panel:nth-of-type(2) { animation-delay: 0.11s; }
+.brief-col:nth-of-type(2) .panel:nth-of-type(1) { animation-delay: 0.07s; }
+.brief-col:nth-of-type(2) .panel:nth-of-type(2) { animation-delay: 0.16s; }
 
 .panel-title {
   font-size: 9px;
@@ -385,6 +399,14 @@ html, body {
   gap: 20px;
   padding: 0 28px;
   text-align: center;
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.14s var(--ease), transform 0.14s var(--ease);
+}
+
+.ask-center.fade-out {
+  opacity: 0;
+  transform: scale(0.985);
 }
 
 .ask-hint { font-size: 14px; color: var(--text-secondary); }

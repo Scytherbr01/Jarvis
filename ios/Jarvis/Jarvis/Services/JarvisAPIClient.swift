@@ -127,6 +127,35 @@ final class JarvisAPIClient {
         try Self.validate(response, data: data)
     }
 
+    struct TwilioStatus: Decodable {
+        let configured: Bool
+        let enabled: Bool
+    }
+
+    func twilioStatus() async throws -> TwilioStatus {
+        let request = try request(path: "/api/twilio/status")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validate(response, data: data)
+        return try decoder.decode(TwilioStatus.self, from: data)
+    }
+
+    func setTwilioEnabled(_ enabled: Bool) async throws -> TwilioStatus {
+        struct Body: Encodable { let enabled: Bool }
+        let body = try encoder.encode(Body(enabled: enabled))
+        let request = try request(path: "/api/twilio/toggle", method: "POST", body: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validate(response, data: data)
+        return try decoder.decode(TwilioStatus.self, from: data)
+    }
+
+    func callAlert(message: String) async throws {
+        struct Body: Encodable { let message: String }
+        let body = try encoder.encode(Body(message: message))
+        let request = try request(path: "/api/call-alert", method: "POST", body: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validate(response, data: data)
+    }
+
     private static func validate(_ response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             let message = String(data: data, encoding: .utf8) ?? "Unknown server error"

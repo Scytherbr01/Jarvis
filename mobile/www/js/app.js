@@ -85,9 +85,15 @@ const App = (() => {
     $("btn-open-settings").addEventListener("click", () => {
       showScreen("screen-settings");
       loadConnections();
+      refreshTwilioStatus();
+    });
+    $("btn-refresh-brief").addEventListener("click", () => {
+      JarvisHaptics.light();
+      loadBrief();
     });
     $("btn-close-settings").addEventListener("click", () => showScreen("screen-brief"));
     $("btn-ask-jarvis").addEventListener("click", () => {
+      JarvisHaptics.light();
       resetAsk();
       showScreen("screen-ask");
     });
@@ -106,15 +112,43 @@ const App = (() => {
       const tokens = gmailTokens || loadStoredGmailTokens();
       const brief = await JarvisAPI.fetchDailyBrief(tokens, null);
       currentBrief = brief;
-      renderBrief(brief);
+      Prefs.set("cachedBrief", JSON.stringify(brief));
+      Prefs.set("cachedBriefAt", Date.now().toString());
+      renderBrief(brief, false);
     } catch (err) {
+      const cached = loadCachedBrief();
+      if (cached) {
+        currentBrief = cached.brief;
+        renderBrief(cached.brief, true, cached.at);
+        return;
+      }
       body.innerHTML = statusViewHTML("error", err.message || "Couldn't load today's brief.", true);
       const retry = body.querySelector(".retry");
       if (retry) retry.addEventListener("click", loadBrief);
     }
   }
 
-  function renderBrief(brief) {
+  function loadCachedBrief() {
+    const raw = Prefs.get("cachedBrief");
+    const atRaw = Prefs.get("cachedBriefAt");
+    if (!raw || !atRaw) return null;
+    try {
+      return { brief: JSON.parse(raw), at: Number(atRaw) };
+    } catch {
+      return null;
+    }
+  }
+
+  function relativeTime(fromMs) {
+    const minutes = Math.round((Date.now() - fromMs) / 60000);
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.round(hours / 24)}d ago`;
+  }
+
+  function renderBrief(brief, isStale, staleAt) {
     $("brief-greeting").textContent = (brief.greeting || "").toUpperCase();
 
     const marketRows = (brief.market.tickers || [])
@@ -149,7 +183,15 @@ const App = (() => {
       )
       .join("");
 
+    const staleBanner = isStale
+      ? `<div class="stale-banner">
+          <span>Showing cached brief from ${esc(relativeTime(staleAt))} — backend unreachable.</span>
+          <button id="btn-retry-live">Retry</button>
+        </div>`
+      : "";
+
     $("brief-body").innerHTML = `
+      ${staleBanner}
       <div class="brief-row">
         <div class="brief-col">
           <div class="panel"><div class="panel-title">MARKET</div>${marketRows}</div>
@@ -168,6 +210,8 @@ const App = (() => {
       </div>
     `;
 
+    if (isStale) $("btn-retry-live").addEventListener("click", loadBrief);
+
     const reactorHost = $("btn-read-brief");
     mountReactor(reactorHost, 148, JarvisSpeech.isSpeaking);
     reactorHost.addEventListener("click", () => {
@@ -176,7 +220,7 @@ const App = (() => {
     });
     JarvisSpeech.onSpeakingChange((speaking) => {
       if (!document.body.contains(reactorHost)) return;
-      reactorHost.classList.toggle("active", speaking);
+      setReactorActive(reactorHost, speaking);
       $("read-brief-label").textContent = speaking ? "READING…" : "TAP TO READ";
     });
   }
@@ -229,9 +273,59 @@ const App = (() => {
       scheduleDailyNotification(e.target.value);
     });
 
-    $("toggle-call-alerts").addEventListener("click", () => {
-      alert("Not available yet — add Twilio credentials to the backend's .env, then this switches on.");
+    $("toggle-call-alerts").addEventListener("click", async () => {
+      if (!Prefs.get("backendUrl") || !Prefs.get("apiKey")) {
+        alert("Set your backend URL and API key above first.");
+        return;
+      }
+      try {
+        const status = await JarvisAPI.twilioStatus();
+        if (!status.configured) {
+          alert("Not available yet — add Twilio credentials to the backend's .env, then this switches on automatically.");
+          return;
+        }
+        const result = await JarvisAPI.setTwilioEnabled(!status.enabled);
+        renderCallAlertsState(result.configured, result.enabled);
+      } catch (err) {
+        alert("Couldn't reach the backend: " + err.message);
+      }
     });
+
+    $("btn-test-call").addEventListener("click", async () => {
+      const btn = $("btn-test-call");
+      btn.disabled = true;
+      btn.textContent = "Calling…";
+      try {
+        await JarvisAPI.callAlert("This is a test call from Jarvis. Call alerts are working.");
+      } catch (err) {
+        alert("Test call failed: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Test call";
+      }
+    });
+
+    refreshTwilioStatus();
+  }
+
+  async function refreshTwilioStatus() {
+    if (!Prefs.get("backendUrl") || !Prefs.get("apiKey")) return;
+    try {
+      const { configured, enabled } = await JarvisAPI.twilioStatus();
+      renderCallAlertsState(configured, configured && enabled);
+    } catch {
+      // Backend unreachable — leave the toggle in its last-known state.
+    }
+  }
+
+  function renderCallAlertsState(configured, enabled) {
+    const toggle = $("toggle-call-alerts");
+    toggle.classList.toggle("disabled", !configured);
+    toggle.classList.toggle("on", enabled);
+    $("row-test-call").style.display = configured ? "flex" : "none";
+    $("call-alerts-hint").textContent = configured
+      ? "Twilio is configured on the backend. Toggle on to let the alert-check cron call you for market moves and urgent email — see backend/README.md to tune thresholds."
+      : "Uses Twilio, a paid calling service — disabled until you add Twilio credentials to the backend's .env (see backend/README.md). Flip this on once they're set.";
   }
 
   async function loadConnections() {
@@ -334,20 +428,34 @@ const App = (() => {
 
   let askState = "idle";
 
+  // Cross-fades content changes instead of an instant cut — every state
+  // change in this flow (listening → working → draft → sent, etc.) reads
+  // as one continuous screen rather than a slideshow of separate ones.
+  function setAskContent(html, afterSwap) {
+    const el = $("ask-content");
+    el.classList.add("fade-out");
+    window.setTimeout(() => {
+      el.innerHTML = html;
+      el.classList.remove("fade-out");
+      if (afterSwap) afterSwap();
+    }, 140);
+  }
+
   function resetAsk() {
     askState = "idle";
     JarvisSpeech.stop();
-    $("ask-content").innerHTML = `
+    setAskContent(`
       <div class="ask-hint">Tap the reactor and try:</div>
       <div class="ask-examples">"EMAIL SAM ABOUT FRIDAY"<br>"TEXT SAM RUNNING LATE"<br>"CALL SAM"<br>"OPEN INSTAGRAM"</div>
-    `;
-    mountReactor($("btn-ask-reactor"), 96, false);
+    `);
+    setReactorActive($("btn-ask-reactor"), false);
   }
 
   function initAsk() {
     mountReactor($("btn-ask-reactor"), 96, false);
 
     $("btn-ask-reactor").addEventListener("click", () => {
+      JarvisHaptics.light();
       if (askState === "listening") {
         JarvisSpeech.stopListening();
       } else if (askState === "idle") {
@@ -358,7 +466,7 @@ const App = (() => {
     });
 
     JarvisSpeech.onListeningChange((listening) => {
-      mountReactor($("btn-ask-reactor"), 96, listening || JarvisSpeech.isSpeaking);
+      setReactorActive($("btn-ask-reactor"), listening || JarvisSpeech.isSpeaking);
       if (!listening && askState === "listening") {
         const transcript = lastTranscript.trim();
         if (transcript) routeAndHandle(transcript);
@@ -366,7 +474,7 @@ const App = (() => {
       }
     });
     JarvisSpeech.onSpeakingChange((speaking) => {
-      mountReactor($("btn-ask-reactor"), 96, speaking || JarvisSpeech.isListening);
+      setReactorActive($("btn-ask-reactor"), speaking || JarvisSpeech.isListening);
     });
 
     // Subscribed once; beginListening() just resets lastTranscript each run.
@@ -383,28 +491,32 @@ const App = (() => {
     lastTranscript = "";
     if (JarvisSpeech.supportsNativeSTT()) {
       askState = "listening";
-      $("ask-content").innerHTML = `<div class="ask-transcript" id="live-transcript">Listening…</div>`;
+      setAskContent(`<div class="ask-transcript" id="live-transcript">Listening…</div>`);
       JarvisSpeech.startListening();
-      mountReactor($("btn-ask-reactor"), 96, true);
+      setReactorActive($("btn-ask-reactor"), true);
     } else {
       // Fallback: plain text field. Tap its keyboard's mic button to dictate.
       askState = "typing";
-      $("ask-content").innerHTML = `
+      setAskContent(
+        `
         <div class="ask-hint">Type or dictate a command:</div>
         <textarea class="dictation-fallback" id="fallback-input" rows="3" placeholder="Email Sam about rescheduling Friday…"></textarea>
         <button class="btn-accent" id="fallback-submit" style="max-width:200px;">Go</button>
-      `;
-      $("fallback-input").focus();
-      $("fallback-submit").addEventListener("click", () => {
-        const text = $("fallback-input").value.trim();
-        if (text) routeAndHandle(text);
-      });
+      `,
+        () => {
+          $("fallback-input").focus();
+          $("fallback-submit").addEventListener("click", () => {
+            const text = $("fallback-input").value.trim();
+            if (text) routeAndHandle(text);
+          });
+        }
+      );
     }
   }
 
   async function routeAndHandle(transcript) {
     askState = "working";
-    $("ask-content").innerHTML = `<div class="spinner-label">Working on it…</div>`;
+    setAskContent(`<div class="spinner-label">Working on it…</div>`);
     const command = CommandRouter.route(transcript);
 
     switch (command.type) {
@@ -429,15 +541,17 @@ const App = (() => {
 
   function showAskError(message) {
     askState = "error";
-    $("ask-content").innerHTML = statusViewHTML("error", message, false) + `<button class="retry" id="ask-retry">Try again</button>`;
-    $("ask-retry").addEventListener("click", resetAsk);
+    setAskContent(statusViewHTML("error", message, false) + `<button class="retry" id="ask-retry">Try again</button>`, () => {
+      $("ask-retry").addEventListener("click", resetAsk);
+    });
   }
 
   async function handleComposeEmail(recipient, topic) {
     try {
       const draft = await JarvisAPI.composeEmail(recipient, null, topic);
       askState = "emailDraft";
-      $("ask-content").innerHTML = `
+      setAskContent(
+        `
         <div class="card">
           ${recipient ? `<div class="card-label">To: ${esc(recipient)}</div>` : ""}
           <div class="card-title">${esc(draft.subject)}</div>
@@ -450,25 +564,29 @@ const App = (() => {
             <button class="btn-accent" id="email-send" disabled>Send</button>
           </div>
         </div>
-      `;
-      JarvisSpeech.speak(`Subject: ${draft.subject}. ${draft.body}`);
+      `,
+        () => {
+          JarvisSpeech.speak(`Subject: ${draft.subject}. ${draft.body}`);
 
-      const input = $("email-recipient-input");
-      const sendBtn = $("email-send");
-      input.addEventListener("input", () => (sendBtn.disabled = !input.value.trim()));
-      $("email-read-again").addEventListener("click", () => JarvisSpeech.speak(`Subject: ${draft.subject}. ${draft.body}`));
-      $("email-discard").addEventListener("click", resetAsk);
-      sendBtn.addEventListener("click", async () => {
-        const tokens = loadStoredGmailTokens();
-        if (!tokens) return showAskError("Connect Gmail in Settings first — I need send permission to actually send this.");
-        try {
-          await JarvisAPI.sendEmail(tokens, input.value.trim(), draft.subject, draft.body);
-          askState = "emailSent";
-          $("ask-content").innerHTML = statusViewHTML("success", "Email sent.", false);
-        } catch (err) {
-          showAskError("Couldn't send that email: " + err.message);
+          const input = $("email-recipient-input");
+          const sendBtn = $("email-send");
+          input.addEventListener("input", () => (sendBtn.disabled = !input.value.trim()));
+          $("email-read-again").addEventListener("click", () => JarvisSpeech.speak(`Subject: ${draft.subject}. ${draft.body}`));
+          $("email-discard").addEventListener("click", resetAsk);
+          sendBtn.addEventListener("click", async () => {
+            JarvisHaptics.medium();
+            const tokens = loadStoredGmailTokens();
+            if (!tokens) return showAskError("Connect Gmail in Settings first — I need send permission to actually send this.");
+            try {
+              await JarvisAPI.sendEmail(tokens, input.value.trim(), draft.subject, draft.body);
+              askState = "emailSent";
+              setAskContent(statusViewHTML("success", "Email sent.", false));
+            } catch (err) {
+              showAskError("Couldn't send that email: " + err.message);
+            }
+          });
         }
-      });
+      );
     } catch (err) {
       showAskError("Couldn't draft that email: " + err.message);
     }
@@ -479,7 +597,8 @@ const App = (() => {
     try {
       const { body } = await JarvisAPI.composeText(recipient, topic);
       askState = "textDraft";
-      $("ask-content").innerHTML = `
+      setAskContent(
+        `
         <div class="card">
           <div class="card-label">To: ${esc(recipient)}</div>
           <div class="card-body">${esc(body)}</div>
@@ -491,17 +610,21 @@ const App = (() => {
             <button class="btn-accent" id="text-open" disabled>Open Messages</button>
           </div>
         </div>
-      `;
-      JarvisSpeech.speak(`I've drafted a text to ${recipient}: ${body}. You'll need to tap send yourself.`);
-      const input = $("text-number-input");
-      const openBtn = $("text-open");
-      input.addEventListener("input", () => (openBtn.disabled = !input.value.trim()));
-      $("text-read-again").addEventListener("click", () => JarvisSpeech.speak(body));
-      $("text-discard").addEventListener("click", resetAsk);
-      openBtn.addEventListener("click", () => {
-        window.location.href = `sms:${encodeURIComponent(input.value.trim())}?body=${encodeURIComponent(body)}`;
-        resetAsk();
-      });
+      `,
+        () => {
+          JarvisSpeech.speak(`I've drafted a text to ${recipient}: ${body}. You'll need to tap send yourself.`);
+          const input = $("text-number-input");
+          const openBtn = $("text-open");
+          input.addEventListener("input", () => (openBtn.disabled = !input.value.trim()));
+          $("text-read-again").addEventListener("click", () => JarvisSpeech.speak(body));
+          $("text-discard").addEventListener("click", resetAsk);
+          openBtn.addEventListener("click", () => {
+            JarvisHaptics.medium();
+            window.location.href = `sms:${encodeURIComponent(input.value.trim())}?body=${encodeURIComponent(body)}`;
+            resetAsk();
+          });
+        }
+      );
     } catch (err) {
       showAskError("Couldn't draft that text: " + err.message);
     }
@@ -509,7 +632,8 @@ const App = (() => {
 
   async function handleCall(target) {
     askState = "callReady";
-    $("ask-content").innerHTML = `
+    setAskContent(
+      `
       <div style="display:flex;flex-direction:column;gap:12px;align-items:center;">
         <div style="font-size:16px;font-weight:600;">Call ${esc(target)}?</div>
         <input class="card-input" id="call-number-input" placeholder="Phone number" type="tel" style="width:220px;text-align:center;" />
@@ -519,15 +643,19 @@ const App = (() => {
           <button class="btn-accent" id="call-confirm" disabled>Call</button>
         </div>
       </div>
-    `;
-    const input = $("call-number-input");
-    const callBtn = $("call-confirm");
-    input.addEventListener("input", () => (callBtn.disabled = !input.value.trim()));
-    $("call-cancel").addEventListener("click", resetAsk);
-    callBtn.addEventListener("click", () => {
-      window.location.href = "tel:" + encodeURIComponent(input.value.trim());
-      resetAsk();
-    });
+    `,
+      () => {
+        const input = $("call-number-input");
+        const callBtn = $("call-confirm");
+        input.addEventListener("input", () => (callBtn.disabled = !input.value.trim()));
+        $("call-cancel").addEventListener("click", resetAsk);
+        callBtn.addEventListener("click", () => {
+          JarvisHaptics.medium();
+          window.location.href = "tel:" + encodeURIComponent(input.value.trim());
+          resetAsk();
+        });
+      }
+    );
   }
 
   async function handleOpenApp(name) {
@@ -537,18 +665,19 @@ const App = (() => {
     }
     window.location.href = scheme;
     askState = "appOpened";
-    $("ask-content").innerHTML = statusViewHTML("success", `Opened ${name}.`, false);
+    setAskContent(statusViewHTML("success", `Opened ${name}.`, false));
   }
 
   // ---------- boot ----------
 
   async function init() {
-    await Prefs.hydrate(["backendUrl", "apiKey", "briefTime", "gmailTokens"]);
+    await Prefs.hydrate(["backendUrl", "apiKey", "briefTime", "gmailTokens", "cachedBrief", "cachedBriefAt"]);
     initNav();
     initSettings();
     initAsk();
     initGmailDeepLink();
     gmailTokens = loadStoredGmailTokens();
+    mountReactor($("brief-loading-reactor"), 80, true);
     await loadBrief();
     if (Prefs.get("briefTime")) scheduleDailyNotification(Prefs.get("briefTime"));
   }
