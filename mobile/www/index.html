@@ -4,11 +4,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <title>Jarvis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
   <div id="app">
     <div class="hud-grid"></div>
+    <div class="hud-scan"></div>
+    <div class="bracket tl"></div>
+    <div class="bracket tr"></div>
+    <div class="bracket bl"></div>
+    <div class="bracket br"></div>
 
     <!-- ============ DAILY BRIEF ============ -->
     <section id="screen-brief" class="screen active">
@@ -41,7 +49,7 @@
     <!-- ============ SETTINGS ============ -->
     <section id="screen-settings" class="screen">
       <div class="topbar">
-        <button class="link-btn" id="btn-close-settings">Back</button>
+        <button class="link-btn" id="btn-close-settings">◄ Back</button>
         <div class="brand">SETTINGS</div>
         <div style="width:38px"></div>
       </div>
@@ -79,7 +87,7 @@
     <!-- ============ ASK JARVIS ============ -->
     <section id="screen-ask" class="screen">
       <div class="topbar">
-        <button class="link-btn" id="btn-close-ask">Close</button>
+        <button class="link-btn" id="btn-close-ask">◄ Close</button>
         <div class="brand">ASK JARVIS</div>
         <div style="width:38px"></div>
       </div>

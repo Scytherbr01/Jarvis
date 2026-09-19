@@ -10,38 +10,54 @@ function renderReactor(size) {
   const c = size / 2;
   const majorTicks = [0, 90, 180, 270];
   const minorTicks = [22.5, 45, 67.5, 112.5, 135, 157.5, 202.5, 225, 247.5, 292.5, 315, 337.5];
+  const CYAN = "#3FE0FF";
 
   let ticks = "";
   for (const angle of majorTicks) {
-    ticks += `<line x1="${c}" y1="4" x2="${c}" y2="18" stroke="#26CFFF" stroke-width="2.5" transform="rotate(${angle} ${c} ${c})"/>`;
+    ticks += `<line x1="${c}" y1="4" x2="${c}" y2="19" stroke="${CYAN}" stroke-width="2.6" transform="rotate(${angle} ${c} ${c})"/>`;
   }
   for (const angle of minorTicks) {
-    ticks += `<line x1="${c}" y1="4" x2="${c}" y2="13" stroke="#26CFFF" stroke-width="1.1" opacity="0.5" transform="rotate(${angle} ${c} ${c})"/>`;
+    ticks += `<line x1="${c}" y1="4" x2="${c}" y2="14" stroke="${CYAN}" stroke-width="1.2" opacity="0.5" transform="rotate(${angle} ${c} ${c})"/>`;
   }
+  // A bright orbiting marker riding the tick ring — the "satellite dot"
+  // that sells the targeting-dial look at a glance.
+  ticks += `<circle cx="${c}" cy="${c - c * 0.86}" r="${size * 0.017}" fill="#BFF6FF" style="filter:drop-shadow(0 0 5px ${CYAN});"/>`;
 
+  const outerR = c * 0.97;
   const dialR = c * 0.82;
-  const dashR = c * 0.58;
-  const coreR = c * 0.32;
+  const dial2R = c * 0.7;
+  const dashR = c * 0.56;
+  const coreR = c * 0.31;
+  const haloR = c * 0.38;
   const dialCirc = 2 * Math.PI * dialR;
+  const dial2Circ = 2 * Math.PI * dial2R;
   const gradId = "coreGrad" + Math.random().toString(36).slice(2, 8);
 
   return `
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="overflow:visible;">
       <defs>
         <radialGradient id="${gradId}" cx="35%" cy="35%">
-          <stop offset="0%" stop-color="#BFF6FF"/>
-          <stop offset="55%" stop-color="#17B7FF"/>
-          <stop offset="100%" stop-color="#17B7FF" stop-opacity="0.05"/>
+          <stop offset="0%" stop-color="#F2FFFF"/>
+          <stop offset="45%" stop-color="${CYAN}"/>
+          <stop offset="100%" stop-color="#0C8FAE" stop-opacity="0.08"/>
         </radialGradient>
       </defs>
+      <circle cx="${c}" cy="${c}" r="${outerR}" fill="none" stroke="${CYAN}" stroke-width="0.6" stroke-dasharray="1.2 5" opacity="0.3"/>
       <g class="reactor-ticks" style="transform-origin:${c}px ${c}px;">${ticks}</g>
-      <circle class="reactor-dial" cx="${c}" cy="${c}" r="${dialR}" fill="none" stroke="#26CFFF"
+      <circle class="reactor-dial" cx="${c}" cy="${c}" r="${dialR}" fill="none" stroke="${CYAN}"
         stroke-width="${size * 0.045}" stroke-linecap="round"
         stroke-dasharray="${dialCirc * 0.76} ${dialCirc * 0.24}" opacity="0.92"
         style="transform-origin:${c}px ${c}px;"/>
-      <circle class="reactor-dash" cx="${c}" cy="${c}" r="${dashR}" fill="none" stroke="#26CFFF"
-        stroke-width="1" stroke-dasharray="4 7" opacity="0.55" style="transform-origin:${c}px ${c}px;"/>
+      <circle class="reactor-dial2" cx="${c}" cy="${c}" r="${dial2R}" fill="none" stroke="#8FF0FF"
+        stroke-width="${size * 0.013}" stroke-linecap="round"
+        stroke-dasharray="${dial2Circ * 0.16} ${dial2Circ * 0.84}" opacity="0.6"
+        style="transform-origin:${c}px ${c}px;"/>
+      <circle class="reactor-dash" cx="${c}" cy="${c}" r="${dashR}" fill="none" stroke="${CYAN}"
+        stroke-width="1" stroke-dasharray="3 6" opacity="0.5" style="transform-origin:${c}px ${c}px;"/>
+      <circle class="reactor-halo" cx="${c}" cy="${c}" r="${haloR}" fill="none" stroke="${CYAN}" stroke-width="1" opacity="0.35" style="transform-origin:${c}px ${c}px;"/>
       <circle class="reactor-core" cx="${c}" cy="${c}" r="${coreR}" fill="url(#${gradId})" style="transform-origin:${c}px ${c}px;"/>
+      <line x1="${c}" y1="${c - coreR * 0.55}" x2="${c}" y2="${c + coreR * 0.55}" stroke="#000305" stroke-width="1" opacity="0.5"/>
+      <line x1="${c - coreR * 0.55}" y1="${c}" x2="${c + coreR * 0.55}" y2="${c}" stroke="#000305" stroke-width="1" opacity="0.5"/>
     </svg>`;
 }
 
@@ -88,8 +104,10 @@ const ReactorEngine = (() => {
       this.pulsePhase = 0;
       this.pulseFreq = 0.5;
       this.dialEl = el.querySelector(".reactor-dial");
+      this.dial2El = el.querySelector(".reactor-dial2");
       this.tickEl = el.querySelector(".reactor-ticks");
       this.dashEl = el.querySelector(".reactor-dash");
+      this.haloEl = el.querySelector(".reactor-halo");
       this.coreEl = el.querySelector(".reactor-core");
     }
 
@@ -121,10 +139,12 @@ const ReactorEngine = (() => {
 
       if (this.dialEl) {
         this.dialEl.style.transform = `rotate(${this.dialAngle}deg)`;
-        this.dialEl.style.filter = `drop-shadow(0 0 ${glowRadius}px rgba(38,207,255,${glowAlpha}))`;
+        this.dialEl.style.filter = `drop-shadow(0 0 ${glowRadius}px rgba(63,224,255,${glowAlpha}))`;
       }
       if (this.tickEl) this.tickEl.style.transform = `rotate(${this.tickAngle}deg)`;
       if (this.dashEl) this.dashEl.style.transform = `rotate(${this.dashAngle}deg)`;
+      if (this.dial2El) this.dial2El.style.transform = `rotate(${-this.dashAngle * 1.6}deg)`;
+      if (this.haloEl) this.haloEl.style.transform = `scale(${1 + Math.sin(this.pulsePhase) * pulseDepth * 1.6})`;
       if (this.coreEl) this.coreEl.style.transform = `scale(${scale})`;
     }
   }

@@ -2,14 +2,14 @@
   "appId": "com.jarvis.app",
   "appName": "Jarvis",
   "webDir": "www",
-  "backgroundColor": "#020408",
+  "backgroundColor": "#000305",
   "android": {
-    "backgroundColor": "#020408"
+    "backgroundColor": "#000305"
   },
   "plugins": {
     "LocalNotifications": {
       "smallIcon": "ic_stat_jarvis",
-      "iconColor": "#26CFFF"
+      "iconColor": "#3FE0FF"
     }
   }
 }
