@@ -29,6 +29,9 @@ const CommandRouter = (() => {
     match = extractAfter(["call"], transcript);
     if (match) return { type: "call", target: match };
 
+    match = extractAfter(["make a youtube video about", "post a youtube video about", "youtube video about"], transcript);
+    if (match) return { type: "youtubeContent", topic: match };
+
     if (lower.startsWith("open ")) return { type: "openApp", name: transcript.slice(5).trim() };
 
     return { type: "unknown", transcript };
@@ -91,12 +94,11 @@ const App = (() => {
       JarvisHaptics.light();
       loadBrief();
     });
-    $("btn-close-settings").addEventListener("click", () => showScreen("screen-brief"));
-    $("btn-ask-jarvis").addEventListener("click", () => {
+    $("btn-read-brief").addEventListener("click", () => {
       JarvisHaptics.light();
-      resetAsk();
-      showScreen("screen-ask");
+      toggleReadBrief();
     });
+    $("btn-close-settings").addEventListener("click", () => showScreen("screen-brief"));
     $("btn-close-ask").addEventListener("click", () => {
       JarvisSpeech.stop();
       JarvisSpeech.stopListening();
@@ -199,8 +201,8 @@ const App = (() => {
         </div>
 
         <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0;">
-          <button class="reactor-btn" id="btn-read-brief" aria-label="Read brief aloud"></button>
-          <div class="reactor-label" id="read-brief-label">TAP TO READ</div>
+          <button class="reactor-btn" id="btn-main-reactor" aria-label="Talk to Jarvis"></button>
+          <div class="reactor-label" id="main-reactor-label">TAP TO TALK</div>
         </div>
 
         <div class="brief-col">
@@ -212,17 +214,26 @@ const App = (() => {
 
     if (isStale) $("btn-retry-live").addEventListener("click", loadBrief);
 
-    const reactorHost = $("btn-read-brief");
+    const reactorHost = $("btn-main-reactor");
     mountReactor(reactorHost, 148, JarvisSpeech.isSpeaking);
     reactorHost.addEventListener("click", () => {
-      if (JarvisSpeech.isSpeaking) JarvisSpeech.stop();
-      else JarvisSpeech.speak(spokenTextForBrief(brief));
+      JarvisHaptics.light();
+      resetAsk();
+      showScreen("screen-ask");
+      beginListening();
     });
     JarvisSpeech.onSpeakingChange((speaking) => {
+      $("btn-read-brief")?.classList.toggle("active", speaking);
       if (!document.body.contains(reactorHost)) return;
       setReactorActive(reactorHost, speaking);
-      $("read-brief-label").textContent = speaking ? "READING…" : "TAP TO READ";
+      $("main-reactor-label").textContent = speaking ? "READING…" : "TAP TO TALK";
     });
+  }
+
+  function toggleReadBrief() {
+    if (!currentBrief) return;
+    if (JarvisSpeech.isSpeaking) JarvisSpeech.stop();
+    else JarvisSpeech.speak(spokenTextForBrief(currentBrief));
   }
 
   function spokenTextForBrief(brief) {
@@ -339,17 +350,20 @@ const App = (() => {
       list.innerHTML = connections.map(connectionRowHTML).join("");
       const gmailBtn = list.querySelector("[data-connect='gmail']");
       if (gmailBtn) gmailBtn.addEventListener("click", connectGmail);
+      const youtubeBtn = list.querySelector("[data-connect='youtube']");
+      if (youtubeBtn) youtubeBtn.addEventListener("click", connectYoutube);
     } catch (err) {
       list.innerHTML = `<div class="hint" style="padding:12px 14px;">${esc(err.message)}</div>`;
     }
   }
 
   function connectionRowHTML(c) {
-    const connected = c.id === "gmail" ? !!loadStoredGmailTokens() : c.available;
+    const connected = c.id === "gmail" ? !!loadStoredGmailTokens() : c.id === "youtube" ? !!loadStoredYoutubeTokens() : c.available;
     let statusHTML;
     if (!c.available) statusHTML = `<span class="conn-status unavailable">Unavailable</span>`;
     else if (connected) statusHTML = `<span class="conn-status connected">● Connected</span>`;
     else if (c.id === "gmail") statusHTML = `<button class="conn-connect-btn" data-connect="gmail">Connect</button>`;
+    else if (c.id === "youtube") statusHTML = `<button class="conn-connect-btn" data-connect="youtube">Connect</button>`;
     else statusHTML = `<span class="conn-status connected">● Ready</span>`;
 
     return `<div class="field-row conn-row">
@@ -360,6 +374,16 @@ const App = (() => {
 
   function loadStoredGmailTokens() {
     const raw = Prefs.get("gmailTokens");
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  function loadStoredYoutubeTokens() {
+    const raw = Prefs.get("youtubeTokens");
     if (!raw) return null;
     try {
       return JSON.parse(raw);
@@ -381,13 +405,27 @@ const App = (() => {
     }
   }
 
+  async function connectYoutube() {
+    try {
+      const { url } = await JarvisAPI.youtubeAuthUrl();
+      if (window.Capacitor && window.Capacitor.Plugins.Browser) {
+        await window.Capacitor.Plugins.Browser.open({ url });
+      } else {
+        window.open(url, "_blank");
+      }
+    } catch (err) {
+      alert("Couldn't start YouTube sign-in: " + err.message);
+    }
+  }
+
   function initGmailDeepLink() {
     if (!(window.Capacitor && window.Capacitor.Plugins.App)) return;
     window.Capacitor.Plugins.App.addListener("appUrlOpen", async (data) => {
       const url = new URL(data.url);
+      const code = url.searchParams.get("code");
+      if (!code) return;
+
       if (url.pathname.includes("gmail/callback") || url.host.includes("gmail")) {
-        const code = url.searchParams.get("code");
-        if (!code) return;
         if (window.Capacitor.Plugins.Browser) window.Capacitor.Plugins.Browser.close();
         try {
           const tokens = await JarvisAPI.exchangeGmailCode(code);
@@ -396,6 +434,15 @@ const App = (() => {
           loadConnections();
         } catch (err) {
           alert("Gmail sign-in failed: " + err.message);
+        }
+      } else if (url.pathname.includes("youtube/callback") || url.host.includes("youtube")) {
+        if (window.Capacitor.Plugins.Browser) window.Capacitor.Plugins.Browser.close();
+        try {
+          const tokens = await JarvisAPI.exchangeYoutubeCode(code);
+          Prefs.set("youtubeTokens", JSON.stringify(tokens));
+          loadConnections();
+        } catch (err) {
+          alert("YouTube sign-in failed: " + err.message);
         }
       }
     });
@@ -446,7 +493,7 @@ const App = (() => {
     JarvisSpeech.stop();
     setAskContent(`
       <div class="ask-hint">Tap the reactor and try:</div>
-      <div class="ask-examples">"EMAIL SAM ABOUT FRIDAY"<br>"TEXT SAM RUNNING LATE"<br>"CALL SAM"<br>"OPEN INSTAGRAM"</div>
+      <div class="ask-examples">"EMAIL SAM ABOUT FRIDAY"<br>"TEXT SAM RUNNING LATE"<br>"CALL SAM"<br>"OPEN INSTAGRAM"<br>"MAKE A YOUTUBE VIDEO ABOUT…"</div>
     `);
     setReactorActive($("btn-ask-reactor"), false);
   }
@@ -517,7 +564,7 @@ const App = (() => {
   async function routeAndHandle(transcript) {
     askState = "working";
     setAskContent(`<div class="spinner-label">Working on it…</div>`);
-    const command = CommandRouter.route(transcript);
+    const command = await resolveCommand(transcript);
 
     switch (command.type) {
       case "composeEmail":
@@ -532,11 +579,43 @@ const App = (() => {
       case "openApp":
         await handleOpenApp(command.name);
         break;
+      case "youtubeContent":
+        await handleCreateYouTubeContent(command.topic);
+        break;
       default:
         showAskError(
-          `I didn't catch a command in "${transcript}". Try "email Sam about rescheduling Friday", "text Sam I'm running late", "call Sam", or "open Instagram".`
+          `I didn't catch a command in "${transcript}". Try "email Sam about rescheduling Friday", "text Sam I'm running late", "call Sam", "open Instagram", or "make a YouTube video about X".`
         );
     }
+  }
+
+  // Directs the command to Jarvis's AI subagent dispatcher (real Claude
+  // tool-calling on the backend) when a backend is configured, so
+  // phrasing the local keyword router can't parse still routes correctly.
+  // Falls back to the local CommandRouter when offline or unconfigured.
+  async function resolveCommand(transcript) {
+    if (Prefs.get("backendUrl") && Prefs.get("apiKey")) {
+      try {
+        const { tool, input } = await JarvisAPI.dispatchAgent(transcript);
+        switch (tool) {
+          case "draft_email":
+            return { type: "composeEmail", recipient: input.recipient || null, topic: input.topic };
+          case "draft_text":
+            return { type: "composeText", recipient: input.recipient || null, topic: input.topic };
+          case "place_call":
+            return { type: "call", target: input.target };
+          case "open_app":
+            return { type: "openApp", name: input.name };
+          case "create_youtube_content":
+            return { type: "youtubeContent", topic: input.topic };
+          default:
+            return { type: "unknown", transcript };
+        }
+      } catch {
+        // Backend unreachable or dispatch failed — fall back to local routing.
+      }
+    }
+    return CommandRouter.route(transcript);
   }
 
   function showAskError(message) {
@@ -658,6 +737,54 @@ const App = (() => {
     );
   }
 
+  async function handleCreateYouTubeContent(topic) {
+    if (!topic) return showAskError('What should the video be about? Try "make a YouTube video about X".');
+    try {
+      const draft = await JarvisAPI.draftYouTubeContent(topic);
+      askState = "youtubeDraft";
+      setAskContent(
+        `
+        <div class="card">
+          <div class="card-label">YOUTUBE // ${esc(topic).toUpperCase()}</div>
+          <div class="card-title">${esc(draft.title)}</div>
+          <div class="card-divider"></div>
+          <div class="card-body">${esc(draft.description)}</div>
+          <div class="card-note">Tags: ${esc((draft.tags || []).join(", "))}</div>
+          <div class="card-note">Script: ${esc(draft.script)}</div>
+          <input class="card-input" id="youtube-source-input" placeholder="Video URL to post (you provide the footage)" type="url" />
+          <div class="card-actions">
+            <button class="btn-ghost" id="youtube-read-again">Read again</button>
+            <button class="btn-danger" id="youtube-discard">Discard</button>
+            <button class="btn-accent" id="youtube-post" disabled>Post</button>
+          </div>
+        </div>
+      `,
+        () => {
+          JarvisSpeech.speak(`Here's the draft for your video. ${draft.script}`);
+          const input = $("youtube-source-input");
+          const postBtn = $("youtube-post");
+          input.addEventListener("input", () => (postBtn.disabled = !input.value.trim()));
+          $("youtube-read-again").addEventListener("click", () => JarvisSpeech.speak(draft.script));
+          $("youtube-discard").addEventListener("click", resetAsk);
+          postBtn.addEventListener("click", async () => {
+            JarvisHaptics.medium();
+            const tokens = loadStoredYoutubeTokens();
+            if (!tokens) return showAskError("Connect YouTube in Settings first — I need upload permission to post this.");
+            try {
+              const result = await JarvisAPI.uploadYouTubeVideo(tokens, input.value.trim(), draft.title, draft.description, draft.tags);
+              askState = "youtubePosted";
+              setAskContent(statusViewHTML("success", `Posted to YouTube: ${result.url}`, false));
+            } catch (err) {
+              showAskError("Couldn't post that video: " + err.message);
+            }
+          });
+        }
+      );
+    } catch (err) {
+      showAskError("Couldn't draft that video: " + err.message);
+    }
+  }
+
   async function handleOpenApp(name) {
     const scheme = CommandRouter.urlSchemeForApp(name);
     if (!scheme) {
@@ -671,7 +798,7 @@ const App = (() => {
   // ---------- boot ----------
 
   async function init() {
-    await Prefs.hydrate(["backendUrl", "apiKey", "briefTime", "gmailTokens", "cachedBrief", "cachedBriefAt"]);
+    await Prefs.hydrate(["backendUrl", "apiKey", "briefTime", "gmailTokens", "youtubeTokens", "cachedBrief", "cachedBriefAt"]);
     initNav();
     initSettings();
     initAsk();

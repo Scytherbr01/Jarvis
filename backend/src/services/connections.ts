@@ -10,7 +10,7 @@
  * These stay listed so the UI is honest about what's connectable today
  * and can light up automatically if a platform ever opens an API.
  */
-export type ConnectionId = "gmail" | "news" | "stocks" | "instagram" | "wickrgov" | "signal" | "messages";
+export type ConnectionId = "gmail" | "news" | "stocks" | "youtube" | "instagram" | "wickrgov" | "signal" | "messages";
 
 export interface ConnectionDefinition {
   id: ConnectionId;
@@ -23,6 +23,7 @@ export const CONNECTIONS: ConnectionDefinition[] = [
   { id: "gmail", name: "Gmail", available: true },
   { id: "news", name: "News", available: true },
   { id: "stocks", name: "Stock Market", available: true },
+  { id: "youtube", name: "YouTube", available: true },
   {
     id: "instagram",
     name: "Instagram",

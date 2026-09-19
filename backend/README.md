@@ -19,7 +19,7 @@ npm run dev       # http://localhost:8787
 | Variable | Required for | Notes |
 |---|---|---|
 | `JARVIS_API_KEYS` | everything | comma-separated list of keys the iOS app sends as `x-jarvis-key`; generate a long random string per device |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Gmail | create an OAuth client at [Google Cloud Console](https://console.cloud.google.com/apis/credentials), enable the Gmail API, add `GOOGLE_REDIRECT_URI` as an authorized redirect URI |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Gmail + YouTube | create an OAuth client at [Google Cloud Console](https://console.cloud.google.com/apis/credentials), enable the Gmail API and YouTube Data API v3, add both `GOOGLE_REDIRECT_URI` and `GOOGLE_YOUTUBE_REDIRECT_URI` as authorized redirect URIs |
 | `ALPHA_VANTAGE_API_KEY` | Stocks | free key at alphavantage.co; free tier is rate-limited (5 req/min), fine for one daily brief |
 | `NEWS_API_KEY` | News | free key at newsapi.org |
 | `ANTHROPIC_API_KEY` | "Ask Jarvis" voice commands | drafts emails/texts; get one at [console.anthropic.com](https://console.anthropic.com/settings/keys) |
@@ -41,6 +41,11 @@ All under `/api`, all require the `x-jarvis-key` header.
 - `POST /api/compose/email` — body `{ recipientName?, recipientEmail?, topic, instructions? }`, returns `{ subject, body }` drafted by Claude. Draft only, never sends.
 - `POST /api/compose/text` — body `{ recipientName?, topic, instructions? }`, returns `{ body }` drafted by Claude, SMS-style. Draft only.
 - `POST /api/gmail/send` — body `{ gmailTokens, to, subject, body }`, actually sends via Gmail. Only call this after the user has approved a draft.
+- `POST /api/agent/dispatch` — body `{ transcript }`, returns `{ tool, input }`: the AI subagent dispatcher, using Claude tool-calling to pick which subagent (draft_email, draft_text, place_call, open_app, create_youtube_content) a spoken command means. Routing only — the app performs the actual action.
+- `GET /api/oauth/youtube/url` — YouTube OAuth consent URL for the app to open (requests `youtube.upload` + `youtube.readonly`).
+- `POST /api/oauth/youtube/exchange` — body `{ code }`, exchanges an OAuth code for tokens.
+- `POST /api/content/draft` — body `{ topic }`, returns `{ title, description, tags, script }` drafted by Claude for a YouTube upload. Draft only, never posts. Doesn't generate footage — pair it with a video you already have.
+- `POST /api/youtube/upload` — body `{ youtubeTokens, sourceUrl, title, description, tags? }`, fetches the video at `sourceUrl` and posts it to YouTube (private by default). Requires YouTube tokens from the OAuth flow above.
 - `GET /api/twilio/status` — `{ configured: boolean }`, whether call-alerts are set up. Drives the on/off state of the Settings toggle in both apps.
 - `POST /api/call-alert` — body `{ message }`, places a real phone call right now reading `message` aloud. Used by the apps' "Test call" button and internally by the alert-check cron. Returns 409 if Twilio isn't configured.
 

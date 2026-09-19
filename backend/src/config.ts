@@ -23,6 +23,10 @@ export const config = {
     // Without it, the cron still checks market-move alerts — it just
     // skips the urgent-email check.
     serverRefreshToken: process.env.GMAIL_SERVER_REFRESH_TOKEN ?? "",
+    // Same Google OAuth client (clientId/clientSecret above), a separate
+    // redirect path so the app can tell a Gmail callback from a YouTube
+    // one, and its own scopes (youtube.upload + youtube.readonly).
+    youtubeRedirectUri: process.env.GOOGLE_YOUTUBE_REDIRECT_URI ?? "jarvis://oauth/youtube/callback",
   },
 
   alphaVantageApiKey: process.env.ALPHA_VANTAGE_API_KEY ?? "",

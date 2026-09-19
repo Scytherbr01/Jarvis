@@ -6,6 +6,9 @@ import { composeEmail, composeText } from "../services/composeService.js";
 import { placeAlertCall } from "../services/twilioService.js";
 import { CONNECTIONS } from "../services/connections.js";
 import { runtimeState } from "../state/runtimeState.js";
+import { dispatchAgentCommand } from "../agent/agentDispatcher.js";
+import { draftYouTubeContent } from "../agent/contentAgent.js";
+import { buildYouTubeAuthUrl, exchangeYouTubeCode, uploadVideo } from "../services/youtubeService.js";
 
 export const briefRoutes = Router();
 
@@ -114,6 +117,89 @@ briefRoutes.post("/gmail/send", async (req, res) => {
   } catch (err) {
     console.error("Gmail send failed", err);
     res.status(500).json({ error: err instanceof Error ? err.message : "Gmail send failed." });
+  }
+});
+
+/**
+ * Body: { transcript }
+ * The AI subagent dispatcher: Claude picks which subagent (draft_email,
+ * draft_text, place_call, open_app, create_youtube_content) a spoken
+ * command means, using real tool-calling rather than keyword matching.
+ * The app acts on the result; this endpoint never performs the action
+ * itself.
+ */
+briefRoutes.post("/agent/dispatch", async (req, res) => {
+  const { transcript } = req.body ?? {};
+  if (!transcript) {
+    res.status(400).json({ error: "Missing `transcript` in request body." });
+    return;
+  }
+  try {
+    const result = await dispatchAgentCommand(transcript);
+    res.json(result);
+  } catch (err) {
+    console.error("Agent dispatch failed", err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "Agent dispatch failed." });
+  }
+});
+
+briefRoutes.get("/oauth/youtube/url", (_req, res) => {
+  res.json({ url: buildYouTubeAuthUrl() });
+});
+
+briefRoutes.post("/oauth/youtube/exchange", async (req, res) => {
+  const code = req.body?.code;
+  if (!code) {
+    res.status(400).json({ error: "Missing `code` in request body." });
+    return;
+  }
+  try {
+    const tokens = await exchangeYouTubeCode(code);
+    res.json(tokens);
+  } catch (err) {
+    console.error("YouTube token exchange failed", err);
+    res.status(500).json({ error: "YouTube token exchange failed." });
+  }
+});
+
+/**
+ * Body: { topic }
+ * The Content subagent: drafts title/description/tags/script for a
+ * YouTube video on the given topic. Drafts only — never posts.
+ */
+briefRoutes.post("/content/draft", async (req, res) => {
+  const { topic } = req.body ?? {};
+  if (!topic) {
+    res.status(400).json({ error: "Missing `topic` in request body." });
+    return;
+  }
+  try {
+    const draft = await draftYouTubeContent(topic);
+    res.json(draft);
+  } catch (err) {
+    console.error("Content draft failed", err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "Content draft failed." });
+  }
+});
+
+/**
+ * Body: { youtubeTokens, sourceUrl, title, description, tags?, privacyStatus? }
+ * Posts a video that already exists at `sourceUrl` (Jarvis packages and
+ * uploads it — it never generates footage). Requires YouTube tokens from
+ * the OAuth flow above.
+ */
+briefRoutes.post("/youtube/upload", async (req, res) => {
+  const { youtubeTokens, sourceUrl, title, description, tags, privacyStatus } = req.body ?? {};
+  if (!youtubeTokens || !sourceUrl || !title || !description) {
+    res.status(400).json({ error: "Missing youtubeTokens, sourceUrl, title, or description." });
+    return;
+  }
+  try {
+    const result = await uploadVideo(youtubeTokens, { sourceUrl, title, description, tags, privacyStatus });
+    res.json(result);
+  } catch (err) {
+    console.error("YouTube upload failed", err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "YouTube upload failed." });
   }
 });
 

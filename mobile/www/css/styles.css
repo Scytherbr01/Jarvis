@@ -83,6 +83,26 @@ html, body {
   z-index: 2;
 }
 
+.topbar-3col {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.topbar-3col .topbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.topbar-3col .brand {
+  justify-self: center;
+}
+
+.topbar-3col > .icon-btn {
+  justify-self: end;
+}
+
 .topbar .brand {
   font-size: 11px;
   font-weight: 500;
@@ -108,6 +128,11 @@ html, body {
 .icon-btn:active {
   background: var(--accent-soft);
   transform: scale(0.92);
+}
+
+.icon-btn.active {
+  background: var(--accent-soft);
+  filter: drop-shadow(0 0 5px var(--accent-glow));
 }
 
 .subheading {
@@ -277,33 +302,16 @@ html, body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ---------- primary action button ---------- */
+/* ---------- tap hint ---------- */
 
-.primary-bar {
-  padding: 10px 16px calc(env(safe-area-inset-bottom, 12px) + 12px);
+.tap-hint {
+  text-align: center;
+  font-size: 9px;
+  letter-spacing: 1.8px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  padding: 6px 16px calc(env(safe-area-inset-bottom, 12px) + 12px);
 }
-
-.btn-primary {
-  width: 100%;
-  border: 1px solid var(--accent);
-  background: linear-gradient(180deg, rgba(53, 216, 232, 0.22), rgba(53, 216, 232, 0.08));
-  color: var(--accent);
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  padding: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
-  box-shadow: 0 0 22px rgba(53, 216, 232, 0.3), inset 0 0 20px rgba(53, 216, 232, 0.08);
-  transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
-}
-
-.btn-primary:active { transform: scale(0.97); box-shadow: 0 0 12px rgba(53, 216, 232, 0.25); }
 
 /* ---------- forms / settings ---------- */
 

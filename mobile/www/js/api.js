@@ -56,5 +56,11 @@ const JarvisAPI = (() => {
     twilioStatus: () => request("/api/twilio/status"),
     setTwilioEnabled: (enabled) => request("/api/twilio/toggle", { method: "POST", body: { enabled } }),
     callAlert: (message) => request("/api/call-alert", { method: "POST", body: { message } }),
+    dispatchAgent: (transcript) => request("/api/agent/dispatch", { method: "POST", body: { transcript } }),
+    youtubeAuthUrl: () => request("/api/oauth/youtube/url"),
+    exchangeYoutubeCode: (code) => request("/api/oauth/youtube/exchange", { method: "POST", body: { code } }),
+    draftYouTubeContent: (topic) => request("/api/content/draft", { method: "POST", body: { topic } }),
+    uploadYouTubeVideo: (youtubeTokens, sourceUrl, title, description, tags) =>
+      request("/api/youtube/upload", { method: "POST", body: { youtubeTokens, sourceUrl, title, description, tags } }),
   };
 })();
