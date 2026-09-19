@@ -32,8 +32,24 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      # android-actions/setup-android@v3 unconditionally runs
+      # `sdkmanager tools`, a package Google removed from the SDK
+      # repository years ago — it fails every time with "Failed to find
+      # package 'tools'". Installing the SDK by hand instead, requesting
+      # only packages that still exist.
       - name: Install Android SDK
-        uses: android-actions/setup-android@v3
+        env:
+          ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+        run: |
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          curl -sSL -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q cmdline-tools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          rm cmdline-tools.zip
+          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
 
       - name: Install npm dependencies
         run: npm install
