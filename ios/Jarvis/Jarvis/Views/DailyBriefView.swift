@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DailyBriefView: View {
     @StateObject private var viewModel = DailyBriefViewModel()
+    @StateObject private var speech = BriefSpeechService.shared
 
     var body: some View {
         NavigationStack {
@@ -56,6 +57,16 @@ struct DailyBriefView: View {
             }
             .navigationTitle("Daily Brief")
             .toolbar {
+                if let brief = viewModel.brief {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            speech.isSpeaking ? speech.stop() : speech.speak(brief)
+                        } label: {
+                            Image(systemName: speech.isSpeaking ? "stop.circle.fill" : "play.circle.fill")
+                        }
+                        .accessibilityLabel(speech.isSpeaking ? "Stop reading brief" : "Read brief aloud")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink(destination: SettingsView()) {
                         Image(systemName: "gearshape")
@@ -63,6 +74,7 @@ struct DailyBriefView: View {
                 }
             }
             .task { await viewModel.refresh() }
+            .onDisappear { speech.stop() }
         }
     }
 }

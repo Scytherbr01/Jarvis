@@ -15,8 +15,8 @@ path is to let Xcode generate the project and drop these files in.
 2. Delete the generated `ContentView.swift` and default `Info.plist` entries
    that conflict with the ones here.
 3. Drag `Jarvis/Models`, `Jarvis/Services`, `Jarvis/ViewModels`,
-   `Jarvis/Views`, and `Jarvis/JarvisApp.swift` from this folder into the
-   Xcode project navigator ("Copy items if needed" checked).
+   `Jarvis/Views`, `Jarvis/Intents`, and `Jarvis/JarvisApp.swift` from this
+   folder into the Xcode project navigator ("Copy items if needed" checked).
 4. Merge `Jarvis/Info.plist` into your project's Info.plist (or replace it) —
    it declares the `jarvis://` URL scheme used for the Gmail OAuth redirect
    and the notifications usage string.
@@ -37,6 +37,20 @@ screen enter:
 Tap **Connect** next to Gmail to run the OAuth flow. News and Stock Market
 work immediately once the backend has its API keys configured — there's
 nothing to "connect" client-side for those.
+
+## Reading the brief aloud
+
+Tap the play button (top-left of the Daily Brief screen) to have
+`BriefSpeechService` read the market advice, important emails, and top
+headlines out loud via `AVSpeechSynthesizer`. This only reads content
+Jarvis itself generated — it has no access to notifications from other
+apps (see below).
+
+You can also say **"Hey Siri, read my Jarvis brief"** once you've opened
+the app at least once (registers the shortcut from `Intents/ReadDailyBriefIntent.swift`).
+Depending on iOS version and Siri settings, this may briefly show the app
+before speaking — that's an OS-level behavior for audio intents, not
+something the app controls.
 
 ## What's real vs. placeholder
 
