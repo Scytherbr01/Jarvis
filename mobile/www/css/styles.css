@@ -1,15 +1,15 @@
 :root {
-  --bg: #000305;
-  --surface: rgba(6, 16, 22, 0.86);
-  --surface-solid: #0d1520;
-  --border: rgba(63, 224, 255, 0.38);
-  --accent: #3fe0ff;
-  --accent-dim: #1b7a94;
-  --accent-soft: rgba(63, 224, 255, 0.14);
-  --accent-glow: rgba(63, 224, 255, 0.5);
-  --text-primary: #dcf6ff;
-  --text-secondary: #5c8a98;
-  --text-tertiary: #2c4650;
+  --bg: #0a1622;
+  --surface: rgba(15, 30, 42, 0.7);
+  --surface-solid: #101f2c;
+  --border: rgba(53, 216, 232, 0.3);
+  --accent: #35d8e8;
+  --accent-dim: #1e7d8a;
+  --accent-soft: rgba(53, 216, 232, 0.12);
+  --accent-glow: rgba(53, 216, 232, 0.45);
+  --text-primary: #eafbff;
+  --text-secondary: #6b93a0;
+  --text-tertiary: #35505c;
   --success: #3fffb0;
   --danger: #ff4b4b;
   --warning: #ffb347;
@@ -35,61 +35,23 @@ html, body {
   width: 100%;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 140% 90% at 50% 8%, rgba(63, 224, 255, 0.12), transparent 55%),
+    radial-gradient(ellipse 120% 70% at 50% 20%, rgba(53, 216, 232, 0.09), transparent 60%),
     var(--bg);
 }
 
+/* A quiet grid, faded out toward the edges — texture, not a dashboard.
+   No scan line, no corner brackets: the reference emblem this app is
+   modeled on is calm and mostly negative space. */
 .hud-grid {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(63, 224, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(63, 224, 255, 0.07) 1px, transparent 1px);
-  background-size: 26px 26px;
+    linear-gradient(rgba(53, 216, 232, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(53, 216, 232, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
   pointer-events: none;
-  mask-image: radial-gradient(ellipse 95% 85% at 50% 35%, #000 45%, transparent 90%);
+  mask-image: radial-gradient(ellipse 90% 75% at 50% 32%, #000 35%, transparent 85%);
 }
-
-.hud-grid::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse at 50% 38%, rgba(63, 224, 255, 0.08), transparent 60%);
-}
-
-/* A faint horizontal scan band drifting down the screen — subtle enough
-   to read as ambient HUD texture, not a distracting effect. */
-.hud-scan {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 140px;
-  background: linear-gradient(180deg, transparent, rgba(63, 224, 255, 0.06), transparent);
-  animation: scanDrift 6.5s linear infinite;
-  pointer-events: none;
-  z-index: 3;
-}
-
-@keyframes scanDrift {
-  from { top: -140px; }
-  to { top: 100%; }
-}
-
-/* corner-bracket framing — the targeting-viewfinder detail that reads
-   as "HUD" at a glance, borrowed straight from the reference look. */
-.bracket {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--accent);
-  opacity: 0.85;
-  pointer-events: none;
-  z-index: 4;
-}
-.bracket.tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }
-.bracket.tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
-.bracket.bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
-.bracket.br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
 
 /* ---------- screen transitions ---------- */
 
@@ -123,11 +85,11 @@ html, body {
 
 .topbar .brand {
   font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 3.5px;
-  color: var(--accent);
+  font-weight: 500;
+  letter-spacing: 4px;
+  color: var(--text-primary);
   font-family: var(--font-display);
-  text-shadow: 0 0 10px var(--accent-glow);
+  text-shadow: 0 0 6px var(--accent-glow);
 }
 
 .icon-btn {
@@ -324,7 +286,7 @@ html, body {
 .btn-primary {
   width: 100%;
   border: 1px solid var(--accent);
-  background: linear-gradient(180deg, rgba(63, 224, 255, 0.22), rgba(63, 224, 255, 0.08));
+  background: linear-gradient(180deg, rgba(53, 216, 232, 0.22), rgba(53, 216, 232, 0.08));
   color: var(--accent);
   font-family: var(--font-display);
   font-size: 13px;
@@ -337,11 +299,11 @@ html, body {
   justify-content: center;
   gap: 9px;
   clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
-  box-shadow: 0 0 22px rgba(63, 224, 255, 0.3), inset 0 0 20px rgba(63, 224, 255, 0.08);
+  box-shadow: 0 0 22px rgba(53, 216, 232, 0.3), inset 0 0 20px rgba(53, 216, 232, 0.08);
   transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
 }
 
-.btn-primary:active { transform: scale(0.97); box-shadow: 0 0 12px rgba(63, 224, 255, 0.25); }
+.btn-primary:active { transform: scale(0.97); box-shadow: 0 0 12px rgba(53, 216, 232, 0.25); }
 
 /* ---------- forms / settings ---------- */
 
@@ -383,7 +345,7 @@ html, body {
   justify-content: space-between;
   padding: 12px 14px;
   gap: 10px;
-  border-bottom: 1px solid rgba(63, 224, 255, 0.12);
+  border-bottom: 1px solid rgba(53, 216, 232, 0.12);
 }
 
 .field-row:last-child { border-bottom: none; }
@@ -420,7 +382,7 @@ html, body {
 .toggle {
   width: 44px;
   height: 24px;
-  background: rgba(63, 224, 255, 0.06);
+  background: rgba(53, 216, 232, 0.06);
   position: relative;
   border: 1px solid var(--border);
   flex-shrink: 0;
@@ -564,14 +526,14 @@ html, body {
   flex: 1;
   padding: 12px;
   border: 1px solid var(--accent);
-  background: linear-gradient(180deg, rgba(63, 224, 255, 0.25), rgba(63, 224, 255, 0.1));
+  background: linear-gradient(180deg, rgba(53, 216, 232, 0.25), rgba(53, 216, 232, 0.1));
   color: var(--accent);
   font-family: var(--font-display);
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;
-  box-shadow: 0 0 16px rgba(63, 224, 255, 0.3);
+  box-shadow: 0 0 16px rgba(53, 216, 232, 0.3);
 }
 .btn-accent:disabled { opacity: 0.4; box-shadow: none; }
 
