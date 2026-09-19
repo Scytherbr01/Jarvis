@@ -6,24 +6,41 @@ wrapped in a native Android project. No Mac, no Xcode, no App Store
 account needed. It talks to the same `../backend` over the same REST API
 as the iOS build.
 
-## The fastest path: let GitHub build it for you
+## The fastest path: one link, always up to date
 
 Building an Android app requires downloading Google's Android SDK and
 Maven repository (`dl.google.com`) — that's blocked in the sandboxed
 environment this was built in, so I couldn't produce a finished `.apk`
 directly. But it's **not blocked on GitHub's own servers**, so a GitHub
-Actions workflow is already set up at
-`.github/workflows/build-android.yml`:
+Actions workflow (`.github/workflows/build-android.yml`) builds it there
+instead, and publishes the result to a permanent link:
 
-1. Push this repo to GitHub (if it isn't already).
-2. Go to the **Actions** tab → "Build Android APK" → **Run workflow**
-   (or just push a commit that touches anything under `mobile/`).
-3. Wait for it to finish (a few minutes), then open the run and download
-   the `jarvis-debug-apk` artifact — that's your `.apk` file.
-4. Transfer it to your phone (email it to yourself, Google Drive, USB,
-   whatever's easiest), tap it, and allow "install unknown apps" for
-   whatever app you opened it from when prompted. It installs and runs
-   like any other app.
+**👉 [github.com/Scytherbr01/Jarvis/releases/latest](https://github.com/Scytherbr01/Jarvis/releases/latest)**
+
+That page always has the newest `.apk` as a direct download — no Actions
+tab, no navigating runs, no unzipping (unlike a workflow artifact, a
+Release asset is the raw file). Every push to this branch rebuilds and
+replaces it automatically. On your phone:
+
+1. Open that link in your phone's browser and tap the `.apk` to download it.
+2. Tap the downloaded file. Android will prompt to allow installs from
+   your browser the first time — allow it, then it installs like any
+   other app.
+3. Reinstalling over an existing copy keeps your Settings (backend URL,
+   API key, cached brief) since Android treats it as an update.
+
+Bookmark that Releases link — it's the one thing to remember, not the
+list of individual builds below.
+
+<details>
+<summary>Alternative: a specific past build (per-run artifact)</summary>
+
+Each Actions run also keeps its own `.apk` as a zipped workflow artifact,
+useful if you specifically want an older build rather than the latest:
+open the **Actions** tab → a past "Build Android APK" run → download
+`jarvis-debug-apk` → unzip it. These expire after 90 days; the Releases
+link above doesn't.
+</details>
 
 No computer of any kind required for this path beyond what you're already
 using to read this.

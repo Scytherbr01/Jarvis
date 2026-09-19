@@ -14,6 +14,9 @@ on:
       - ".github/workflows/build-android.yml"
   workflow_dispatch: {}
 
+permissions:
+  contents: write # needed to publish the "latest" release below
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -66,9 +69,24 @@ jobs:
         working-directory: mobile/android
         run: ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Upload APK (per-run artifact)
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-debug-apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # Also publishes to a permanent "latest" Release, so there's one
+      # stable link to bookmark/share instead of hunting through past
+      # Actions runs each time: github.com/<repo>/releases/latest always
+      # has the newest build.
+      - name: Publish to "latest" release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Jarvis Android (latest build)
+          body: |
+            Automatically rebuilt from commit ${{ github.sha }} on branch `${{ github.ref_name }}`.
+            This is a debug build — sideload it (see mobile/README.md), it isn't on the Play Store.
+          make_latest: true
+          files: mobile/android/app/build/outputs/apk/debug/app-debug.apk
