@@ -8,14 +8,16 @@ struct AskJarvisView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-                content
-                Spacer()
-                orbButton
+            ZStack {
+                JarvisHUDBackground()
+                VStack(spacing: 24) {
+                    Spacer()
+                    content
+                    Spacer()
+                    orbButton
+                }
+                .padding()
             }
-            .padding()
-            .background(JarvisTheme.background.ignoresSafeArea())
             .navigationTitle("Ask Jarvis")
             .toolbarColorScheme(.dark, for: .navigationBar)
             .toolbar {

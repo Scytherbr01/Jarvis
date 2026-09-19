@@ -9,6 +9,7 @@ enum JarvisTheme {
     static let surface = Color(red: 0.06, green: 0.09, blue: 0.15)
     static let surfaceElevated = Color(red: 0.09, green: 0.13, blue: 0.20)
     static let divider = Color(red: 0.16, green: 0.24, blue: 0.31)
+    static let gridLine = Color(red: 0.08, green: 0.16, blue: 0.23)
 
     static let accent = Color(red: 0.15, green: 0.80, blue: 1.0)
     static let accentDim = accent.opacity(0.5)
