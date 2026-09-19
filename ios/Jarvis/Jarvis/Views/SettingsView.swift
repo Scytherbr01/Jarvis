@@ -12,25 +12,34 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Jarvis Backend") {
+            Section {
                 TextField("https://your-backend.example.com", text: $backendURL)
                     .textContentType(.URL)
                     .autocapitalization(.none)
+                    .foregroundStyle(JarvisTheme.textPrimary)
                 SecureField("API key", text: $apiKey)
+                    .foregroundStyle(JarvisTheme.textPrimary)
                     .onChange(of: apiKey) { _, newValue in
                         KeychainStore.set(newValue, forKey: "jarvisApiKey")
                     }
+            } header: {
+                Text("Jarvis Backend").foregroundStyle(JarvisTheme.accent)
             }
+            .listRowBackground(JarvisTheme.surface)
 
-            Section("Daily Brief Time") {
+            Section {
                 DatePicker("Notify me at", selection: $briefTime, displayedComponents: .hourAndMinute)
+                    .foregroundStyle(JarvisTheme.textPrimary)
                     .onChange(of: briefTime) { _, newValue in scheduleNotification(at: newValue) }
                 if let statusMessage {
-                    Text(statusMessage).font(.caption).foregroundStyle(.secondary)
+                    Text(statusMessage).font(.caption).foregroundStyle(JarvisTheme.textSecondary)
                 }
+            } header: {
+                Text("Daily Brief Time").foregroundStyle(JarvisTheme.accent)
             }
+            .listRowBackground(JarvisTheme.surface)
 
-            Section("Connections") {
+            Section {
                 ForEach(connections) { connection in
                     ConnectionRow(
                         connection: connection,
@@ -38,9 +47,15 @@ struct SettingsView: View {
                         onConnect: connection.id == "gmail" ? connectGmail : nil
                     )
                 }
+            } header: {
+                Text("Connections").foregroundStyle(JarvisTheme.accent)
             }
+            .listRowBackground(JarvisTheme.surface)
         }
+        .scrollContentBackground(.hidden)
+        .background(JarvisTheme.background.ignoresSafeArea())
         .navigationTitle("Settings")
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .task { await loadConnections() }
     }
 
@@ -99,21 +114,22 @@ private struct ConnectionRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(connection.name)
+                Text(connection.name).foregroundStyle(JarvisTheme.textPrimary)
                 Spacer()
                 if !connection.available {
-                    Text("Unavailable").font(.caption).foregroundStyle(.secondary)
+                    Text("Unavailable").font(.caption).foregroundStyle(JarvisTheme.textSecondary)
                 } else if isConnected {
                     Label("Connected", systemImage: "checkmark.circle.fill")
                         .font(.caption)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(JarvisTheme.success)
                 } else if let onConnect {
                     Button("Connect", action: onConnect)
                         .font(.caption)
+                        .foregroundStyle(JarvisTheme.accent)
                 }
             }
             if let reason = connection.reason {
-                Text(reason).font(.caption2).foregroundStyle(.secondary)
+                Text(reason).font(.caption2).foregroundStyle(JarvisTheme.textTertiary)
             }
         }
     }

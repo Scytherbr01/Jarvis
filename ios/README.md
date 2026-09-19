@@ -14,12 +14,19 @@ path is to let Xcode generate the project and drop these files in.
      in the backend `.env` if you wire up push later)
 2. Delete the generated `ContentView.swift` and default `Info.plist` entries
    that conflict with the ones here.
-3. Drag `Jarvis/Models`, `Jarvis/Services`, `Jarvis/ViewModels`,
-   `Jarvis/Views`, `Jarvis/Intents`, and `Jarvis/JarvisApp.swift` from this
-   folder into the Xcode project navigator ("Copy items if needed" checked).
+3. Drag `Jarvis/Models`, `Jarvis/Resources`, `Jarvis/Services`,
+   `Jarvis/ViewModels`, `Jarvis/Views`, `Jarvis/Intents`, and
+   `Jarvis/JarvisApp.swift` from this folder into the Xcode project
+   navigator ("Copy items if needed" checked).
 4. Merge `Jarvis/Info.plist` into your project's Info.plist (or replace it) —
-   it declares the `jarvis://` URL scheme used for the Gmail OAuth redirect
-   and the notifications usage string.
+   it declares the `jarvis://` URL scheme used for the Gmail OAuth redirect,
+   the notifications usage string, and `UIUserInterfaceStyle: Dark` (the app
+   never shows a light appearance, by design — see Visual design below).
+   Replace Xcode's generated `Assets.xcassets` with `Jarvis/Assets.xcassets`
+   from this folder — it carries the dark launch-screen background and
+   accent color. It has no app icon image yet (just an empty 1024×1024
+   slot); drop your own `AppIcon.png` into `Assets.xcassets/AppIcon.appiconset`
+   before submitting, or the build will warn about a missing icon.
 5. In Signing & Capabilities, add **Push Notifications** and **Background
    Modes → Remote notifications** if you wire up the APNs push described in
    the backend README. Local notifications (used for the daily brief
@@ -39,6 +46,18 @@ screen enter:
 Tap **Connect** next to Gmail to run the OAuth flow. News and Stock Market
 work immediately once the backend has its API keys configured — there's
 nothing to "connect" client-side for those.
+
+## Visual design
+
+The app is dark-only — `UIUserInterfaceStyle: Dark` in Info.plist plus
+`.preferredColorScheme(.dark)` at the SwiftUI root, so it never renders a
+light appearance regardless of the device's system setting. Colors live in
+`Resources/JarvisTheme.swift` (near-black background, glowing cyan-blue
+accent). `Views/JarvisOrb.swift` is the animated orb — it breathes slowly
+at rest and pulses with expanding rings whenever `BriefSpeechService` is
+speaking or `VoiceCommandService` is listening; it appears next to the
+greeting on the Daily Brief screen and as the mic button on the Ask Jarvis
+screen.
 
 ## Reading the brief aloud
 
