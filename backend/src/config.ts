@@ -25,6 +25,11 @@ export const config = {
 
   newsApiKey: process.env.NEWS_API_KEY ?? "",
 
+  anthropic: {
+    apiKey: process.env.ANTHROPIC_API_KEY ?? "",
+    model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5",
+  },
+
   apns: {
     keyId: process.env.APNS_KEY_ID ?? "",
     teamId: process.env.APNS_TEAM_ID ?? "",

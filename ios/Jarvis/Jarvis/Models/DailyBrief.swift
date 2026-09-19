@@ -61,3 +61,8 @@ struct Connection: Codable, Identifiable {
     let available: Bool
     let reason: String?
 }
+
+struct EmailDraft: Codable {
+    var subject: String
+    var body: String
+}

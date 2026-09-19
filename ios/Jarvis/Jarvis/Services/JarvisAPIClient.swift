@@ -86,6 +86,47 @@ final class JarvisAPIClient {
         return try decoder.decode(GmailTokens.self, from: data)
     }
 
+    func composeEmail(recipientName: String?, recipientEmail: String?, topic: String, instructions: String? = nil) async throws -> EmailDraft {
+        struct Body: Encodable {
+            let recipientName: String?
+            let recipientEmail: String?
+            let topic: String
+            let instructions: String?
+        }
+        let body = try encoder.encode(Body(recipientName: recipientName, recipientEmail: recipientEmail, topic: topic, instructions: instructions))
+        let request = try request(path: "/api/compose/email", method: "POST", body: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validate(response, data: data)
+        return try decoder.decode(EmailDraft.self, from: data)
+    }
+
+    func composeText(recipientName: String?, topic: String, instructions: String? = nil) async throws -> String {
+        struct Body: Encodable {
+            let recipientName: String?
+            let topic: String
+            let instructions: String?
+        }
+        struct Response: Decodable { let body: String }
+        let body = try encoder.encode(Body(recipientName: recipientName, topic: topic, instructions: instructions))
+        let request = try request(path: "/api/compose/text", method: "POST", body: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validate(response, data: data)
+        return try decoder.decode(Response.self, from: data).body
+    }
+
+    func sendEmail(gmailTokens: GmailTokens, to: String, subject: String, body draftBody: String) async throws {
+        struct Body: Encodable {
+            let gmailTokens: GmailTokens
+            let to: String
+            let subject: String
+            let body: String
+        }
+        let body = try encoder.encode(Body(gmailTokens: gmailTokens, to: to, subject: subject, body: draftBody))
+        let request = try request(path: "/api/gmail/send", method: "POST", body: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try Self.validate(response, data: data)
+    }
+
     private static func validate(_ response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             let message = String(data: data, encoding: .utf8) ?? "Unknown server error"

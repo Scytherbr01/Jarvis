@@ -3,6 +3,7 @@ import SwiftUI
 struct DailyBriefView: View {
     @StateObject private var viewModel = DailyBriefViewModel()
     @StateObject private var speech = BriefSpeechService.shared
+    @State private var showingAskJarvis = false
 
     var body: some View {
         NavigationStack {
@@ -73,6 +74,18 @@ struct DailyBriefView: View {
                     }
                 }
             }
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    showingAskJarvis = true
+                } label: {
+                    Label("Ask Jarvis", systemImage: "mic.fill")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .buttonStyle(.borderedProminent)
+                .padding()
+            }
+            .sheet(isPresented: $showingAskJarvis) { AskJarvisView() }
             .task { await viewModel.refresh() }
             .onDisappear { speech.stop() }
         }

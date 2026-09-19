@@ -22,6 +22,7 @@ npm run dev       # http://localhost:8787
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Gmail | create an OAuth client at [Google Cloud Console](https://console.cloud.google.com/apis/credentials), enable the Gmail API, add `GOOGLE_REDIRECT_URI` as an authorized redirect URI |
 | `ALPHA_VANTAGE_API_KEY` | Stocks | free key at alphavantage.co; free tier is rate-limited (5 req/min), fine for one daily brief |
 | `NEWS_API_KEY` | News | free key at newsapi.org |
+| `ANTHROPIC_API_KEY` | "Ask Jarvis" voice commands | drafts emails/texts; get one at [console.anthropic.com](https://console.anthropic.com/settings/keys) |
 | `DEFAULT_WATCHLIST` | Stocks | comma-separated tickers used when the app doesn't send its own |
 | `DAILY_BRIEF_CRON` | scheduled generation | cron expression, default 7am daily |
 | `APNS_*` | push notifications | only needed if you wire up server-push (see below); local notifications from the app work without this |
@@ -33,7 +34,10 @@ All under `/api`, all require the `x-jarvis-key` header.
 - `POST /api/daily-brief` — body `{ gmailTokens?, watchlist? }`, returns the full `DailyBrief` JSON.
 - `GET /api/connections` — list of connections and which are actually available (see below).
 - `GET /api/oauth/gmail/url` — Gmail OAuth consent URL for the app to open.
-- `POST /api/oauth/gmail/exchange` — body `{ code }`, exchanges an OAuth code for tokens.
+- `POST /api/oauth/gmail/exchange` — body `{ code }`, exchanges an OAuth code for tokens. The auth URL requests both `gmail.readonly` and `gmail.send` scopes.
+- `POST /api/compose/email` — body `{ recipientName?, recipientEmail?, topic, instructions? }`, returns `{ subject, body }` drafted by Claude. Draft only, never sends.
+- `POST /api/compose/text` — body `{ recipientName?, topic, instructions? }`, returns `{ body }` drafted by Claude, SMS-style. Draft only.
+- `POST /api/gmail/send` — body `{ gmailTokens, to, subject, body }`, actually sends via Gmail. Only call this after the user has approved a draft.
 
 ## Run the daily brief routine without the app
 

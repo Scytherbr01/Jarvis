@@ -89,8 +89,39 @@ export function buildAuthUrl(): string {
   return client.generateAuthUrl({
     access_type: "offline",
     prompt: "consent",
-    scope: ["https://www.googleapis.com/auth/gmail.readonly"],
+    scope: [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.send",
+    ],
   });
+}
+
+export interface OutgoingEmail {
+  to: string;
+  subject: string;
+  body: string;
+}
+
+function toRawMessage({ to, subject, body }: OutgoingEmail): string {
+  const message = [`To: ${to}`, `Subject: ${subject}`, "Content-Type: text/plain; charset=utf-8", "", body].join(
+    "\r\n",
+  );
+  return Buffer.from(message).toString("base64url");
+}
+
+/**
+ * Actually sends the email. Only called after the user has heard the
+ * draft read back and explicitly approved it — the backend never sends
+ * anything the app didn't get a confirmed approval for.
+ */
+export async function sendEmail(tokens: GmailTokens, email: OutgoingEmail): Promise<{ id: string }> {
+  const auth = oauthClient(tokens);
+  const gmail = google.gmail({ version: "v1", auth });
+  const res = await gmail.users.messages.send({
+    userId: "me",
+    requestBody: { raw: toRawMessage(email) },
+  });
+  return { id: res.data.id ?? "" };
 }
 
 export async function exchangeCodeForTokens(code: string): Promise<GmailTokens> {

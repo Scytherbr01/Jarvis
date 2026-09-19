@@ -25,5 +25,19 @@
 	</array>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Jarvis sends you a notification when your daily brief is ready.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Jarvis listens when you tap "Ask Jarvis" so you can give it a voice command, like drafting an email.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Jarvis transcribes your voice commands to figure out what you're asking it to do.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Jarvis looks up a contact's phone number or email when you ask it to call, text, or email someone by name.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>instagram</string>
+		<string>sgnl</string>
+		<string>googlegmail</string>
+		<string>maps</string>
+		<string>calshow</string>
+	</array>
 </dict>
 </plist>

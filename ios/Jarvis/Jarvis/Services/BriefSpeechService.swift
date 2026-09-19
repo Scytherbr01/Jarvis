@@ -17,11 +17,15 @@ final class BriefSpeechService: NSObject, ObservableObject {
     }
 
     func speak(_ brief: DailyBrief) {
+        speak(text: Self.spokenText(for: brief))
+    }
+
+    func speak(text: String) {
         stop()
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
         try? AVAudioSession.sharedInstance().setActive(true)
 
-        let utterance = AVSpeechUtterance(string: Self.spokenText(for: brief))
+        let utterance = AVSpeechUtterance(string: text)
         utterance.voice = AVSpeechSynthesisVoice(language: Locale.current.identifier)
         utterance.rate = AVSpeechUtteranceDefaultSpeechRate
         synthesizer.speak(utterance)

@@ -23,8 +23,10 @@ path is to let Xcode generate the project and drop these files in.
 5. In Signing & Capabilities, add **Push Notifications** and **Background
    Modes → Remote notifications** if you wire up the APNs push described in
    the backend README. Local notifications (used for the daily brief
-   reminder today) need no extra capability.
-6. Build target: iOS 17+ (uses `NavigationStack`, `ContentUnavailableView`).
+   reminder today) need no extra capability. **Siri** capability is needed
+   for the "Hey Siri, read my Jarvis brief" shortcut.
+6. Build target: iOS 17+ (uses `NavigationStack`, `ContentUnavailableView`,
+   `AVAudioApplication.requestRecordPermission`).
 
 ## Point it at your backend
 
@@ -51,6 +53,37 @@ the app at least once (registers the shortcut from `Intents/ReadDailyBriefIntent
 Depending on iOS version and Siri settings, this may briefly show the app
 before speaking — that's an OS-level behavior for audio intents, not
 something the app controls.
+
+## Ask Jarvis (voice commands)
+
+Tap the "Ask Jarvis" button at the bottom of the Daily Brief screen, then
+speak a command. `VoiceCommandService` transcribes it on-device (Speech
+framework), `CommandRouter` matches it to one of four patterns, and the
+result is handled per-command:
+
+- **"Email Sam about rescheduling Friday"** — looks up Sam's email in
+  Contacts, calls the backend's `/api/compose/email` (Claude drafts
+  subject + body), reads the draft back via TTS, and shows Send/Discard.
+  Tapping Send calls `/api/gmail/send` — this is genuinely hands-free,
+  Gmail's send API needs no extra tap.
+- **"Text Sam I'm running late"** — same drafting flow via
+  `/api/compose/text`, but the result opens `MFMessageComposeViewController`
+  pre-filled. **You have to tap Send yourself in that sheet** — there is no
+  API for a third-party app to send SMS/iMessage without that tap; this is
+  an iOS platform restriction, not a limitation of this app's code.
+- **"Call Sam"** — resolves the number via Contacts and opens the system
+  dialer. **iOS shows its own "Call Sam?" confirmation before it actually
+  dials** — also a platform restriction (anti-fraud/anti-spam), which no
+  app can suppress. It isn't fully hands-free, but it's one tap instead of
+  finding the contact and dialing yourself.
+- **"Open Instagram"** — opens the app via its URL scheme if installed.
+  Only apps with a registered scheme, and listed in this app's
+  `LSApplicationQueriesSchemes` (see `Info.plist`), can be opened this way.
+
+Requires `ANTHROPIC_API_KEY` set on the backend (see `backend/README.md`),
+and Gmail connected with the `gmail.send` scope — if you connected Gmail
+before this feature was added, disconnect and reconnect in Settings to
+pick up the new scope.
 
 ## What's real vs. placeholder
 
